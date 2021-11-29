@@ -39,7 +39,7 @@ The main reason to create this connector is to provide a community alternative o
 >  <dependency>
 >    <groupId>org.neointegrations</groupId>
 >    <artifactId>ftps-connector</artifactId>
->    <version>1.0.7</version>
+>    <version>1.0.0</version>
 >    <classifier>mule-plugin</classifier>
 >  <dependency>
 >    ```
@@ -52,7 +52,7 @@ The main reason to create this connector is to provide a community alternative o
 > ...
 > <repository>
 >  <id>maven-public</id>
->  <url>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</url>
+>  <url>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/mvn-public/maven/v1</url>
 >  <releases>
 >     <enabled>true</enabled>
 >  </releases>
