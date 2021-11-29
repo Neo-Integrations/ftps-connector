@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neointegrations</groupId>
     <artifactId>ftps-connector</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>mule-extension</packaging>
     <name>FTPS Extension</name>
 
@@ -12,8 +12,8 @@
         <mule.version>4.1.2</mule.version>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <releaseRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/mvn-public/v1</releaseRepoUrl>
-        <snapshotRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/mvn-public/v1</snapshotRepoUrl>
+        <releaseRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</releaseRepoUrl>
+        <snapshotRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</snapshotRepoUrl>
     </properties>
 
     <parent>
@@ -26,8 +26,8 @@
         <url>https://github.com/Neo-Integrations/ftps-connector</url>
         <connection>scm:git:https://github.com/Neo-Integrations/ftps-connector.git</connection>
         <developerConnection>scm:git:https://github.com/Neo-Integrations/ftps-connector.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>v1.0.0</tag>
+    </scm>
 
     <build>
 
@@ -135,20 +135,12 @@
         <repository>
             <id>maven-public</id>
             <name>Neo Integrations Public Maven Repo</name>
-<<<<<<< HEAD
-            <url>${releaseRepoUrl}</url>
-=======
             <url>${snapshotRepoUrl}</url>
->>>>>>> d055daadebdbaa6cff29c128d4be56a2a2870b5b
         </repository>
         <snapshotRepository>
             <id>maven-public</id>
             <name>Neo Integrations Public Maven Repo</name>
-<<<<<<< HEAD
-            <url>${snapshotRepoUrl}</url>
-=======
             <url>${releaseRepoUrl}</url>
->>>>>>> d055daadebdbaa6cff29c128d4be56a2a2870b5b
         </snapshotRepository>
     </distributionManagement>
 
