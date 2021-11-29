@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:ftps="http://www.mulesoft.org/schema/mule/ftps"
+      xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ftps http://www.mulesoft.org/schema/mule/ftps/current/mule-ftps.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+
+    <ftps:config name="Ftps_Config" doc:name="Ftps Config" doc:id="75bcfcf1-20dc-485a-bd1a-9ebe5780d72d" >
+        <ftps:connection user="${USER_NAME}" password="${PASSWORD}" host="${IP_ADDRESS}" port="23" timeout="60000" socketTimeout="120000" bufferSizeInBytes="#[1024*1024]" remoteVerificationEnable="false"/>
+    </ftps:config>
+    <flow name="destroy-flow" doc:id="7908ada5-b139-45f7-bed2-9cee30558b7f" >
+        <try doc:name="Try" doc:id="2a8fe5cf-baf5-44ca-a3cb-0ded720e4ad8" >
+            <file:delete doc:name="Delete" doc:id="c8f90861-5779-4f62-8567-4b5d13edce72" path="#['tmp/file.json']" />
+            <error-handler >
+                <on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="39ef7207-6a75-4d2e-912e-2a38541915d3" >
+                    <logger level="INFO" doc:name="Logger" doc:id="b1188491-c93f-43b3-99d0-dbc346b36a5f" message="."/>
+                </on-error-continue>
+            </error-handler>
+        </try>
+        <try doc:name="Try" doc:id="b2e1d225-8314-456c-adbe-9dca617a80e7" >
+            <file:delete doc:name="Delete" doc:id="28659a95-ac3b-48dd-a724-c3b58e993754" path="#['tmp/ftps.json']"/>
+            <error-handler >
+                <on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="95092636-d21a-42ee-b903-7624f0ec95be" >
+                    <logger level="INFO" doc:name="Logger" doc:id="52d88225-19e3-4ad0-83eb-d5e4a597c7e1" />
+                </on-error-continue>
+            </error-handler>
+        </try>
+        <try doc:name="Try" doc:id="076db400-4568-4b76-895f-a77ad880cb1f" >
+            <ftps:rm-file doc:name="Delete File" doc:id="9e8c67bf-f7ec-4794-8f65-a532982e73e5" config-ref="Ftps_Config" targetFolder="/INBOUND" targetFileName="file.json" />
+            <error-handler >
+                <on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="dcf09fd9-5729-4079-a754-ac986d422b8f" >
+                    <logger level="INFO" doc:name="Logger" doc:id="5743165b-9687-48a9-adcf-dfe46b24112f" message="."/>
+                </on-error-continue>
+            </error-handler>
+        </try>
+        <try doc:name="Try" doc:id="737f4dec-683d-497c-9861-1dac450c98d7" >
+            <ftps:rm-file doc:name="Delete File" doc:id="b6a76278-b363-4833-ac81-4eea01b92ac8" config-ref="Ftps_Config" targetFolder="/INBOUND" targetFileName="remote.json" />
+            <error-handler >
+                <on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="3cae10a8-ea21-414b-a412-9b73649154fd" >
+                    <logger level="INFO" doc:name="Logger" doc:id="a381400b-6c29-4182-a805-60b09108c5c6" message="."/>
+                </on-error-continue>
+            </error-handler>
+        </try>
+    </flow>
+    <flow name="init-flow" doc:id="152c26ae-3f73-4be5-8a95-a98b98c5183d" >
+        <set-payload value='#[{&#10;	"data": "test"&#10;}]' doc:name="Set Payload" doc:id="99578fa0-2d66-43ed-bdf3-5cc88d93a60b" mimeType="application/json" encoding="UTF-8"/>
+        <set-variable value="#[payload]" doc:name="Set Variable" doc:id="c3405ea9-6a71-4d22-a908-345c35a68056" variableName="data"/>
+        <file:write doc:name="Write" doc:id="e788a0ac-20b8-46ed-8755-73fe25bb4047" path="#['tmp/file.json']">
+            <file:content ><![CDATA[#[vars.data]]]></file:content>
+        </file:write>
+        <ftps:write doc:name="Write File" doc:id="6aa9e08b-6914-450c-ab6f-1697dacc4f15" config-ref="Ftps_Config" sourceStream="#[vars.data]" targetFileName="ftps.json" targetFolder="/INBOUND"/>
+    </flow>
+    <flow name="rm-flow" doc:id="98096bba-c988-4340-8c4e-9c4a87415b43" >
+        <ftps:rm-file doc:name="Delete File" doc:id="72466294-de52-4af5-8e45-4be27a4ab137" targetFolder="/INBOUND" targetFileName="ftps.json" config-ref="Ftps_Config"/>
+        <set-payload value="#[true]" doc:name="Set Payload" doc:id="f29a3937-db3b-46b9-8557-817fe8be817f" />
+        <error-handler >
+            <on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c7b7566-1647-452e-ba14-77b850bae5bd" >
+                <set-payload value="#[false]" doc:name="Set Payload" doc:id="83737a03-5453-4878-baa7-1da39d10e882" />
+            </on-error-continue>
+        </error-handler>
+    </flow>
+    <flow name="rmdir-flow" doc:id="5f808469-bb8f-4854-a557-c9622f1b9c3e" >
+
+        <ftps:mk-dir doc:name="Create Directory" doc:id="bbcd9947-2f6f-4f6e-8858-5a03608f6dfd" config-ref="Ftps_Config" targetFolder="/INBOUND/testdir" />
+        <ftps:rm-dir doc:name="Remove Directory" doc:id="2a5cfd44-dcd6-46e1-99a2-425fda51e51e" config-ref="Ftps_Config" targetFolder="/INBOUND/testdir"/>
+        <set-payload value="#[true]" doc:name="Set Payload" doc:id="f29a3937-db3b-46b9-8557-817fe8be817f" />
+        <error-handler >
+            <on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c7b7566-1647-452e-ba14-77b850bae5bd" >
+                <set-payload value="#[false]" doc:name="Set Payload" doc:id="83737a03-5453-4878-baa7-1da39d10e882" />
+            </on-error-continue>
+        </error-handler>
+    </flow>
+    <flow name="write-flow" doc:id="df1f6bcf-9f17-4789-8833-b8995d1d05a0" >
+
+        <file:read doc:name="Read" doc:id="29ec7888-a585-4ae4-a0a3-d84d5501cf9b" path="tmp/file.json"/>
+        <set-variable value="#[attributes.fileName]" doc:name="Set Variable" doc:id="41be58fc-e3f5-44c0-a73b-7ff95d8757be" variableName="fileName"/>
+        <ftps:write doc:name="Write File" doc:id="ea68e268-d791-4f7b-ad5a-378f430700a5" config-ref="Ftps_Config" targetFolder="/INBOUND" overwriteFile="false" targetFileName="a.tmp"/>
+        <ftps:rename doc:name="Rename" doc:id="0cd59dcd-167d-4cd0-9100-8316140f7777" sourceFolder="/INBOUND" sourceFileName="a.tmp" targetFolder="/INBOUND" targetFileName="#[vars.fileName]" config-ref="Ftps_Config"/>
+        <set-payload value="#[true]" doc:name="Set Payload" doc:id="f29a3937-db3b-46b9-8557-817fe8be817f" />
+        <error-handler >
+            <on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c7b7566-1647-452e-ba14-77b850bae5bd" >
+                <set-payload value="#[false]" doc:name="Set Payload" doc:id="83737a03-5453-4878-baa7-1da39d10e882" />
+            </on-error-continue>
+        </error-handler>
+    </flow>
+    <flow name="read-flow" doc:id="033d76b9-0da4-4d6a-aa5a-4d1faa96ff8a" >
+
+        <ftps:read doc:name="Read File" doc:id="c90602c8-b414-48a5-b651-52a726499847" config-ref="Ftps_Config" sourceFolder="/INBOUND" fileName="ftps.json"/>
+        <file:write doc:name="Write" doc:id="c49daaaa-2dcc-41bc-826b-469c15a4dab1" path="#['tmp/' ++ attributes.name]"/>
+        <set-payload value="#[true]" doc:name="Set Payload" doc:id="f29a3937-db3b-46b9-8557-817fe8be817f" />
+        <error-handler >
+            <on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c7b7566-1647-452e-ba14-77b850bae5bd" >
+                <set-payload value="#[false]" doc:name="Set Payload" doc:id="83737a03-5453-4878-baa7-1da39d10e882" />
+            </on-error-continue>
+        </error-handler>
+    </flow>
+    <flow name="list-flow" doc:id="7c085990-520f-46bb-be45-03123f76cbdb" >
+
+        <ftps:list doc:name="List File" doc:id="31686d10-e220-46de-825e-53028262cbe2" sourceFolder="/INBOUND" config-ref="Ftps_Config">
+            <ftps:matcher filenamePattern="*" directories="EXCLUDE" symLinks="EXCLUDE"/>
+        </ftps:list>
+        <foreach doc:name="For Each" doc:id="ca7a3e6f-fc5f-4e90-9679-1d932fac7e1f" collection="#[payload]">
+            <file:write doc:name="Write" doc:id="aee35f90-542d-4c21-a083-74b0733912be" path="#['tmp/' ++ attributes.name]"/>
+        </foreach>
+        <set-payload value="#[true]" doc:name="Set Payload" doc:id="f29a3937-db3b-46b9-8557-817fe8be817f" />
+        <error-handler >
+            <on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c7b7566-1647-452e-ba14-77b850bae5bd" >
+                <set-payload value="#[false]" doc:name="Set Payload" doc:id="83737a03-5453-4878-baa7-1da39d10e882" />
+            </on-error-continue>
+        </error-handler>
+    </flow>
+</mule>
