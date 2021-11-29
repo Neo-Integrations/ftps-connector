@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neointegrations</groupId>
     <artifactId>ftps-connector</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>mule-extension</packaging>
     <name>FTPS Extension</name>
 
@@ -12,8 +12,8 @@
         <mule.version>4.1.2</mule.version>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <releaseRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</releaseRepoUrl>
-        <snapshotRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</snapshotRepoUrl>
+        <releaseRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/mvn-public/v1</releaseRepoUrl>
+        <snapshotRepoUrl>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/mvn-public/v1</snapshotRepoUrl>
     </properties>
 
     <parent>
