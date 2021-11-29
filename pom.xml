@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neointegrations</groupId>
     <artifactId>ftps-connector</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>mule-extension</packaging>
     <name>FTPS Extension</name>
 
@@ -26,7 +26,7 @@
         <url>https://github.com/Neo-Integrations/ftps-connector</url>
         <connection>scm:git:https://github.com/Neo-Integrations/ftps-connector.git</connection>
         <developerConnection>scm:git:https://github.com/Neo-Integrations/ftps-connector.git</developerConnection>
-      <tag>v1.0.0</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <build>
