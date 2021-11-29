@@ -1,0 +1,18 @@
+version: '3.2'
+services:
+  ftps:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER: "ftpsuser"
+    volumes:
+      - /Users/mhaque/share:/home/virtual/jetbrains/share
+    environment:
+      PASV_ADDRESS: "192.168.68.110"
+      VSFTPD_USER_1: "ftpsuser:jetbrains::"
+      PASV_MIN_PORT: "30010"
+      PASV_MAX_PORT: "30019"
+    ports:
+      - "23:21"
+      - "30010-30019:30010-30019"
