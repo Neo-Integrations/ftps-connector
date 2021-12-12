@@ -52,7 +52,7 @@ The main reason to create this connector is to provide a community alternative o
 > ...
 > <repository>
 >  <id>maven-public</id>
->  <url>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/mvn-public/maven/v1</url>
+>  <url>https://pkgs.dev.azure.com/NeoIntegration/MuleSoft/_packaging/maven-public/maven/v1</url>
 >  <releases>
 >     <enabled>true</enabled>
 >  </releases>

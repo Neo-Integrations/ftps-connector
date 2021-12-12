@@ -5,11 +5,11 @@ import org.apache.commons.net.ftp.*;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
 import org.mule.runtime.api.connection.PoolingConnectionProvider;
-import org.mule.runtime.extension.api.annotation.param.Config;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 import org.mule.runtime.extension.api.annotation.param.display.Password;
+import org.mule.runtime.extension.api.annotation.param.display.Summary;
 import org.neointegrations.ftps.internal.client.MuleFTPSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +24,7 @@ import java.nio.charset.Charset;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.TimeZone;
 
 
 public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSConnection> {
@@ -75,6 +76,17 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
     @Parameter
     public boolean remoteVerificationEnable;
 
+    @Optional(defaultValue = "true")
+    @DisplayName("SSL session Reuse required by the FTPS server?")
+    @Parameter
+    private boolean sslSessionReuse;
+
+    @Optional(defaultValue = "Europe/London")
+    @Summary("You can find all the time zones here - https://en.wikipedia.org/wiki/List_of_tz_database_time_zones")
+    @DisplayName("Time zone of the server.")
+    @Parameter
+    private String serverTimeZone;
+
     private final SSLContext _sslContext;
 
 
@@ -89,7 +101,7 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
   @Override
   public FTPSConnection connect() throws ConnectionException {
       if(_logger.isDebugEnabled()) _logger.debug("Connection starting...");
-      MuleFTPSClient _client = new MuleFTPSClient(false, _sslContext);
+      MuleFTPSClient _client = new MuleFTPSClient(false, _sslContext, sslSessionReuse);
 
       if(debugFtpCommand) {
           _client.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out), true));
@@ -103,7 +115,7 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
       }
       try {
           final FTPClientConfig config = new FTPClientConfig();
-          config.setServerTimeZoneId("Europe/London");
+          config.setServerTimeZoneId(serverTimeZone);
           _client.configure(config );
 
           // Timeout settings

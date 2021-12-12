@@ -24,10 +24,23 @@ public class MuleFTPSClient extends FTPSClient {
     }
 
 
+    private boolean _sessionReuse = false;
+
+    public MuleFTPSClient(boolean isImplicit, SSLContext context, boolean sessionReuse) {
+        super(isImplicit, context);
+        this._sessionReuse = sessionReuse;
+    }
+
+
     // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
     // to share SSL session with the data connection
     @Override
     protected void _prepareDataSocket_(final Socket socket) throws IOException {
+        if (!_sessionReuse) {
+            super._prepareDataSocket_(socket);
+            return;
+        }
+
         if (socket instanceof SSLSocket) {
             // Control socket is SSL
             final SSLSession session = ((SSLSocket) _socket_).getSession();

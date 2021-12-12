@@ -1,18 +1,22 @@
-version: '3.2'
+version: '2.2'
 services:
   ftps:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USER: "ftpsuser"
-    volumes:
-      - /Users/mhaque/share:/home/virtual/jetbrains/share
-    environment:
-      PASV_ADDRESS: "192.168.68.110"
-      VSFTPD_USER_1: "ftpsuser:jetbrains::"
-      PASV_MIN_PORT: "30010"
-      PASV_MAX_PORT: "30019"
+    container_name: ftps
+    image: chonjay21/ftps:latest
     ports:
       - "23:21"
-      - "30010-30019:30010-30019"
+      - "60000-60010:60000-60010"
+    environment:
+      - APP_USER_NAME=ftpsuser
+      - APP_USER_PASSWD=Change1t
+      - APP_UID=1000
+      - APP_GID=1000
+      - PASSV_MIN_PORT=60000
+      - PASSV_MAX_PORT=60010
+      - FORCE_REINIT_CONFIG=false                  #optional
+      - USE_SSL=true                               #optional
+      - APP_UMASK=007                               #optional
+    volumes:
+      - ../data:/home/vsftpd/data
+      - ./cert.key:/usr/certs/cert.key:ro    #optional for custom certificate(USE_SSL=true)
+      - ./cert.crt:/usr/certs/cert.crt:ro    #optional for custom certificate(USE_SSL=true)

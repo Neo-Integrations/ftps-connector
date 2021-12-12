@@ -3,7 +3,9 @@ package org.neointegrations.ftps.internal;
 import org.apache.commons.net.ftp.FTPFile;
 import org.mule.extension.file.common.api.AbstractFileAttributes;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
+import org.neointegrations.ftps.internal.util.FTPSUtil;
 
+import java.io.File;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -37,7 +39,7 @@ public class FTPSFileAttributes extends AbstractFileAttributes {
     public FTPSFileAttributes(long size, boolean regularFile, boolean directory,
                              boolean symbolicLink, String path,
                               String name, Date timestamp, FTPFile file) {
-        super(Paths.get(path + "\\" + name));
+        super(Paths.get(FTPSUtil.trimPath(path, name)));
         this.size = size;
         this.regularFile = regularFile;
         this.directory = directory;

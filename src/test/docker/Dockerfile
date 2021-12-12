@@ -27,14 +27,4 @@ RUN echo "local_root=/home/virtual/ftpsuser"  >>/etc/vsftpd/vsftpd.conf
 RUN echo "user_sub_token=ftpsuser"  >>/etc/vsftpd/vsftpd.conf
 
 
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/SICKDAYS
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/PAYTARHRS
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/PAYTARHOL
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/PAYTARELV
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/PAYTARABS
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/ACTHRSWRK
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/WORKPATTERN
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/WAGESTREAM
-RUN mkdir -p /home/virtual/ftpsuser/OUTBOUND/ADHOC
-RUN mkdir -p /home/virtual/ftpsuser/INBOUND/OPENPAY
 RUN chmod -R 777 /home/virtual/ftpsuser

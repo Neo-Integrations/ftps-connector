@@ -66,8 +66,10 @@ public class FTPSOperations {
                  */
                 FTPSUtil.requiredCommand(connection);
                 // First query
-                final FTPFile[] listFirst = connection.getFTPSClient().listFiles(sourceFolder, FTPFileFilters.ALL);
+                final FTPFile[] listFirst = connection.getFTPSClient().listFiles(sourceFolder);
+                if (_logger.isDebugEnabled()) _logger.debug("sourceFolder: " + sourceFolder);
                 if (_logger.isDebugEnabled()) _logger.debug("First list size: " + listFirst.length);
+
                 // Sleep for 2 seconds
                 Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
 
@@ -82,20 +84,26 @@ public class FTPSOperations {
 
             FTPSUtil.requiredCommand(connection);
             // 2nd query
-            final FTPFile[] list = connection.getFTPSClient().listFiles(sourceFolder, FTPFileFilters.ALL);
+            final FTPFile[] list = connection.getFTPSClient().listFiles(sourceFolder);
             if(_logger.isDebugEnabled()) _logger.debug("2nd list size: " + list.length);
             for (FTPFile file : list) {
+
+                if(_logger.isDebugEnabled()) _logger.debug("File name " + file.getName());
 
                 // Filters starts
                 if (file == null || file.isDirectory()) {
                     continue;
                 }
 
+                if(_logger.isDebugEnabled()) _logger.debug("after isDirectory check");
+
                 if(sizeCheckEnabled) {
                     long fileSize = nameSizeMap.get(file.getName());
                     if (fileSize == 0 && file.getSize() == 0) continue;
                     if (file.getSize() != fileSize) continue;
                 }
+
+                if(_logger.isDebugEnabled()) _logger.debug("after sizeCheckEnabled check");
 
                 FTPSFileAttributes attr = new FTPSFileAttributes(file.getSize(), file.isFile(),
                         file.isDirectory(), file.isSymbolicLink(), sourceFolder,
@@ -105,6 +113,8 @@ public class FTPSOperations {
                 if (!match.test(attr)) {
                     continue;
                 }
+
+                if(_logger.isDebugEnabled()) _logger.debug("after match.test(attr) check");
                 // Filters ends
 
                 final LazyInputStream lazyStream = new LazyInputStream(sourceFolder,
@@ -189,6 +199,8 @@ public class FTPSOperations {
                          @Connection FTPSConnection connection,
                          @Optional(defaultValue = "#[payload]") InputStream sourceStream,
                          @Optional(defaultValue = "#[attributes.fileName]") String targetFileName,
+                         @Optional(defaultValue = "#['.' ++ (uuid() replace('-') with('_'))]") String intermediateFileName,
+                         @Optional(defaultValue = "false") boolean createIntermediateFile,
                          @Path(type = DIRECTORY, location = EXTERNAL)
                              @Optional(defaultValue = "/home/share") String targetFolder,
                          @Optional(defaultValue = "true") @Placement(tab = ADVANCED_TAB) boolean overwriteFile,
@@ -210,15 +222,39 @@ public class FTPSOperations {
                 }
             }
             if(createParentDirectory) {
+                FTPSUtil.requiredCommand(connection);
                 if (!connection.getFTPSClient().changeWorkingDirectory(targetFolder)) {
                     FTPSUtil.requiredCommand(connection);
                     connection.getFTPSClient().makeDirectory(targetFolder);
                 }
             }
 
-            FTPSUtil.requiredCommand(connection);
-            if(_logger.isDebugEnabled()) _logger.debug("{} successfully created", targetFileName);
-            return connection.getFTPSClient().storeFile(path, sourceStream);
+
+
+            boolean status = false;
+            if(createIntermediateFile) {
+                if(intermediateFileName == null || intermediateFileName.equals("")) {
+                    intermediateFileName = "." + java.util.UUID.randomUUID().toString().replace("-", "_");
+                }
+                String intermediatePath = FTPSUtil.trimPath(targetFolder, intermediateFileName);
+                FTPSUtil.requiredCommand(connection);
+                status = connection.getFTPSClient().storeFile(intermediatePath, sourceStream);
+                if(status) {
+                    FTPSUtil.requiredCommand(connection);
+                    status  = connection.getFTPSClient().rename(intermediatePath, path);
+                }
+            }else {
+                FTPSUtil.requiredCommand(connection);
+                status = connection.getFTPSClient().storeFile(path, sourceStream);
+            }
+
+            if (status) {
+                if(_logger.isDebugEnabled()) _logger.debug("{} successfully created", targetFileName);
+            } else {
+                throw new Exception("Unable to create the file");
+            }
+
+            return true;
         } catch(IllegalStateException is) {
             throw is;
         } catch(Exception e) {
