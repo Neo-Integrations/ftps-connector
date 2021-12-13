@@ -5,7 +5,6 @@ import static org.mule.runtime.api.meta.model.display.PathModel.Type.DIRECTORY;
 import static org.mule.runtime.extension.api.annotation.param.display.Placement.ADVANCED_TAB;
 
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPFileFilters;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.MediaType;
@@ -67,8 +66,6 @@ public class FTPSOperations {
                 FTPSUtil.requiredCommand(connection);
                 // First query
                 final FTPFile[] listFirst = connection.getFTPSClient().listFiles(sourceFolder);
-                if (_logger.isDebugEnabled()) _logger.debug("sourceFolder: " + sourceFolder);
-                if (_logger.isDebugEnabled()) _logger.debug("First list size: " + listFirst.length);
 
                 // Sleep for 2 seconds
                 Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
@@ -85,25 +82,20 @@ public class FTPSOperations {
             FTPSUtil.requiredCommand(connection);
             // 2nd query
             final FTPFile[] list = connection.getFTPSClient().listFiles(sourceFolder);
-            if(_logger.isDebugEnabled()) _logger.debug("2nd list size: " + list.length);
             for (FTPFile file : list) {
-
-                if(_logger.isDebugEnabled()) _logger.debug("File name " + file.getName());
 
                 // Filters starts
                 if (file == null || file.isDirectory()) {
                     continue;
                 }
 
-                if(_logger.isDebugEnabled()) _logger.debug("after isDirectory check");
-
                 if(sizeCheckEnabled) {
-                    long fileSize = nameSizeMap.get(file.getName());
-                    if (fileSize == 0 && file.getSize() == 0) continue;
-                    if (file.getSize() != fileSize) continue;
+                    Long fileSize = nameSizeMap.get(file.getName());
+                    if(fileSize != null) {
+                        if (fileSize == 0 && file.getSize() == 0) continue;
+                        if (file.getSize() != fileSize) continue;
+                    }
                 }
-
-                if(_logger.isDebugEnabled()) _logger.debug("after sizeCheckEnabled check");
 
                 FTPSFileAttributes attr = new FTPSFileAttributes(file.getSize(), file.isFile(),
                         file.isDirectory(), file.isSymbolicLink(), sourceFolder,
@@ -114,9 +106,7 @@ public class FTPSOperations {
                     continue;
                 }
 
-                if(_logger.isDebugEnabled()) _logger.debug("after match.test(attr) check");
                 // Filters ends
-
                 final LazyInputStream lazyStream = new LazyInputStream(sourceFolder,
                         file.getName(),
                         deleteTheFileAfterRead,
@@ -183,8 +173,10 @@ public class FTPSOperations {
                     .build();
 
         } catch(IllegalStateException exp) {
+            _logger.error("Unable read file {}", exp.getMessage(), exp);
             throw exp;
         } catch(FileNotFoundException fnf) {
+            _logger.error("Unable to find the file {}", fnf.getMessage(), fnf);
             throw fnf;
         } catch (Exception e) {
             _logger.error("Unable read file {}", e.getMessage(), e);
@@ -228,8 +220,6 @@ public class FTPSOperations {
                     connection.getFTPSClient().makeDirectory(targetFolder);
                 }
             }
-
-
 
             boolean status = false;
             if(createIntermediateFile) {
