@@ -53,7 +53,7 @@ public class FTPSOperations {
         final List<Result<LazyInputStream, FTPSFileAttributes>> files = new ArrayList<Result<LazyInputStream, FTPSFileAttributes>>();
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
 
             final Map<String, Long> nameSizeMap = new HashMap<>();
@@ -144,7 +144,7 @@ public class FTPSOperations {
 
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             String path = FTPSUtil.trimPath(sourceFolder, fileName);
 
@@ -203,7 +203,7 @@ public class FTPSOperations {
 
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
             if(!overwriteFile) {
@@ -268,7 +268,7 @@ public class FTPSOperations {
         boolean status = false;
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
 
@@ -312,7 +312,7 @@ public class FTPSOperations {
         boolean status = false;
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             FTPSUtil.requiredCommand(connection);
             if(!connection.getFTPSClient().changeWorkingDirectory(targetFolder))
@@ -354,7 +354,7 @@ public class FTPSOperations {
         boolean status = false;
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             FTPSUtil.requiredCommand(connection);
             if(connection.getFTPSClient().changeWorkingDirectory(targetFolder))
@@ -409,7 +409,7 @@ public class FTPSOperations {
         boolean status = false;
         try {
             if (!connection.isConnected()) {
-                connection.reconnect();
+                throw new ConnectionException("Connection is not healthy. It will be retried");
             }
             if(isFileRename) {
                 FTPSUtil.requiredCommand(connection);
