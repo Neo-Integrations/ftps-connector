@@ -40,6 +40,7 @@ public class FTPSOperations {
                           @Connection FTPSConnection connection,
                           @Optional @DisplayName("File Matching Rules")
                             @Summary("Matcher to filter the listed files") FTPSFileMatcher matcher,
+                          @Optional(defaultValue = "false")  boolean createIntermediateFile,
                           @Optional(defaultValue = "true")
                             @Placement(tab = ADVANCED_TAB) boolean deleteTheFileAfterRead,
                           @Optional(defaultValue = "1") @Summary("Time Between size Check (in seconds)")
@@ -85,7 +86,8 @@ public class FTPSOperations {
             for (FTPFile file : list) {
 
                 // Filters starts
-                if (file == null || file.isDirectory()) {
+                if (file == null || file.isDirectory() ||
+                        (file.getName() != null && file.getName().startsWith("."))) {
                     continue;
                 }
 
@@ -108,9 +110,8 @@ public class FTPSOperations {
 
                 // Filters ends
                 final LazyInputStream lazyStream = new LazyInputStream(sourceFolder,
-                        file.getName(),
-                        deleteTheFileAfterRead,
-                        connection.getProvider());
+                        file.getName(), deleteTheFileAfterRead,
+                        connection.getProvider(), createIntermediateFile);
 
                 files.add(Result.<LazyInputStream, FTPSFileAttributes>builder()
                         .output(lazyStream)
@@ -132,6 +133,7 @@ public class FTPSOperations {
                         final @Connection FTPSConnection connection,
                         final @Optional(defaultValue = "/home/share") String sourceFolder,
                         final @Optional(defaultValue = "abc.txt") String fileName,
+                        @Optional(defaultValue = "false")  boolean createIntermediateFile,
                         @Optional(defaultValue = "1") @Summary("Time Between size Check (in seconds)")
                             @Placement(tab = ADVANCED_TAB) long timeBetweenSizeCheckInSeconds,
                         @Optional(defaultValue = "true") @Summary("Enable or disable incomplete file check")
@@ -163,7 +165,7 @@ public class FTPSOperations {
                     fileName, Calendar.getInstance().getTime(), null);
 
             final LazyInputStream lazyStream = new LazyInputStream(sourceFolder, fileName,
-                    deleteFileAfterRead, connection.getProvider());
+                    deleteFileAfterRead, connection.getProvider(), createIntermediateFile);
 
             if(_logger.isDebugEnabled()) _logger.debug("{} file being read...", fileName);
 
@@ -191,7 +193,6 @@ public class FTPSOperations {
                          @Connection FTPSConnection connection,
                          @Optional(defaultValue = "#[payload]") InputStream sourceStream,
                          @Optional(defaultValue = "#[attributes.fileName]") String targetFileName,
-                         @Optional(defaultValue = "#['.' ++ (uuid() replace('-') with('_'))]") String intermediateFileName,
                          @Optional(defaultValue = "false") boolean createIntermediateFile,
                          @Path(type = DIRECTORY, location = EXTERNAL)
                              @Optional(defaultValue = "/home/share") String targetFolder,
@@ -223,9 +224,7 @@ public class FTPSOperations {
 
             boolean status = false;
             if(createIntermediateFile) {
-                if(intermediateFileName == null || intermediateFileName.equals("")) {
-                    intermediateFileName = "." + java.util.UUID.randomUUID().toString().replace("-", "_");
-                }
+                String intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + targetFileName;
                 String intermediatePath = FTPSUtil.trimPath(targetFolder, intermediateFileName);
                 FTPSUtil.requiredCommand(connection);
                 status = connection.getFTPSClient().storeFile(intermediatePath, sourceStream);
@@ -233,7 +232,7 @@ public class FTPSOperations {
                     FTPSUtil.requiredCommand(connection);
                     status  = connection.getFTPSClient().rename(intermediatePath, path);
                 }
-            }else {
+            } else {
                 FTPSUtil.requiredCommand(connection);
                 status = connection.getFTPSClient().storeFile(path, sourceStream);
             }
