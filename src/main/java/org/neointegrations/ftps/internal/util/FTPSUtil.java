@@ -1,9 +1,11 @@
 package org.neointegrations.ftps.internal.util;
 
 import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
 import org.mule.extension.file.common.api.matcher.FileMatcher;
 import org.mule.extension.file.common.api.matcher.NullFilePayloadPredicate;
+import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.internal.FTPSConnection;
 import org.neointegrations.ftps.internal.FTPSFileAttributes;
 import org.neointegrations.ftps.internal.stream.LazyInputStream;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.function.Predicate;
 
 public class FTPSUtil {
@@ -62,15 +65,20 @@ public class FTPSUtil {
         }
     }
 
-    public static void requiredCommand(FTPSConnection connection) throws IOException {
-        connection.getFTPSClient().execPROT("P");
-        connection.getFTPSClient().setFileType(FTP.BINARY_FILE_TYPE);
-        connection.getFTPSClient().setBufferSize(connection.getProvider().bufferSizeInBytes);
-        connection.getFTPSClient().enterLocalPassiveMode();
+    public static void requiredCommand(FTPSConnection connection) throws ConnectionException {
+        try {
+            connection.getFTPSClient().execPROT("P");
+            connection.getFTPSClient().setFileType(FTP.BINARY_FILE_TYPE);
+            connection.getFTPSClient().setBufferSize(connection.getProvider().bufferSizeInBytes);
+            connection.getFTPSClient().enterLocalPassiveMode();
+        } catch (Exception exp) {
+            throw new ConnectionException(exp);
+        }
     }
 
     public static boolean sizeCheck(FTPSConnection connection,
-                                    String path, long timeBetweenSizeCheckInSeconds) throws IOException, InterruptedException {
+                                    String path, long timeBetweenSizeCheckInSeconds)
+            throws IOException, InterruptedException, ConnectionException {
         FTPSUtil.requiredCommand(connection);
         connection.getFTPSClient().sendCommand("SIZE", path);
 

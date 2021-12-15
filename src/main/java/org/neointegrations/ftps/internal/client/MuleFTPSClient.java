@@ -1,6 +1,7 @@
 package org.neointegrations.ftps.internal.client;
 
 import org.apache.commons.net.ftp.FTPSClient;
+import org.mule.runtime.api.connection.ConnectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +10,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Locale;
 
 public class MuleFTPSClient extends FTPSClient {
@@ -26,8 +30,8 @@ public class MuleFTPSClient extends FTPSClient {
 
     private boolean _sessionReuse = false;
 
-    public MuleFTPSClient(boolean isImplicit, SSLContext context, boolean sessionReuse) {
-        super(isImplicit, context);
+    public MuleFTPSClient(boolean isImplicit, SSLContext sslContext, boolean sessionReuse) {
+        super(isImplicit, sslContext);
         this._sessionReuse = sessionReuse;
     }
 
