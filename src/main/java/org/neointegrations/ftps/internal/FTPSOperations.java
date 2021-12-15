@@ -87,7 +87,7 @@ public class FTPSOperations {
 
                 // Filters starts
                 if (file == null || file.isDirectory() ||
-                        (file.getName() != null && file.getName().startsWith("."))) {
+                        (file.getName() != null && file.getName().startsWith("__"))) {
                     continue;
                 }
 

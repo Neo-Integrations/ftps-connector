@@ -89,7 +89,6 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
 
     private final SSLContext _sslContext;
 
-
     public FTPSConnectionProvider() throws ConnectionException {
         super();
         // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
