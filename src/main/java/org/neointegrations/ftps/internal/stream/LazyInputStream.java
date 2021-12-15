@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.concurrent.locks.ReentrantLock;
 
 
@@ -20,22 +22,25 @@ public class LazyInputStream extends InputStream {
 
     private InputStream _inputStream = null;
     private FTPSConnection _connection = null;
-    private final String _fileName;
+    private String _fileName;
     private final String _directory;
     private final boolean _deleteTheFileAfterRead;
     private final FTPSConnectionProvider _provider;
     private boolean _finished = false;
+    private final boolean _createIntermediateFile;
 
 
     public LazyInputStream(final String directory,
                            final String fileName,
                            final boolean _deleteTheFileAfterRead,
-                           FTPSConnectionProvider provider) throws ConnectionException {
+                           final FTPSConnectionProvider provider,
+                           final boolean createIntermediateFile) throws ConnectionException {
 
         this._directory = directory;
         this._deleteTheFileAfterRead = _deleteTheFileAfterRead;
         this._fileName = fileName;
         this._provider = provider;
+        this._createIntermediateFile = createIntermediateFile;
     }
 
     @Override
@@ -122,16 +127,26 @@ public class LazyInputStream extends InputStream {
     }
 
     private void lazyLoadStream() {
+        if(_inputStream != null) return;
+
         _lock.lock();
         if(_inputStream == null) {
-            _inputStream = getFile();
+            _inputStream = inputStream();
         }
         _lock.unlock();
     }
 
-    private InputStream getFile() {
+    private InputStream inputStream() {
         try{
             _connection = _provider.connect();
+            if(_createIntermediateFile) {
+                String intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + _fileName;
+                FTPSUtil.requiredCommand(_connection);
+                _connection.getFTPSClient().rename(FTPSUtil.trimPath(_directory, _fileName),
+                        FTPSUtil.trimPath(_directory, intermediateFileName));
+                _fileName = intermediateFileName;
+            }
+            FTPSUtil.requiredCommand(_connection);
             return _connection.getFTPSClient().retrieveFileStream(FTPSUtil.trimPath(_directory, _fileName));
         }  catch(FileNotFoundException e) {
             _logger.error("File not found {}", _fileName, e);

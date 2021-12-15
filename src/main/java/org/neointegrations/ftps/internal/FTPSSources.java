@@ -77,6 +77,10 @@ public class FTPSSources extends PollingSource<InputStream, FTPSFileAttributes> 
     @Optional(defaultValue = "/home/share")
     private String sourceFolder;
 
+    @Parameter
+    @Optional(defaultValue = "false")
+    private boolean createIntermediateFile;
+
 
     @Parameter
     @Optional(defaultValue = "false")
@@ -101,8 +105,8 @@ public class FTPSSources extends PollingSource<InputStream, FTPSFileAttributes> 
                 final FTPSOperations read = new FTPSOperations();
                 final List<Result<LazyInputStream, FTPSFileAttributes>> files =
                         read.list( config, connection, predicateBuilder,
-                                false,timeBetweenSizeCheckInSeconds,
-                        sizeCheckEnabled, sourceFolder);
+                                createIntermediateFile,false,
+                                timeBetweenSizeCheckInSeconds, sizeCheckEnabled, sourceFolder);
 
                 for (Result<LazyInputStream, FTPSFileAttributes> file : files) {
                     if (pollContext.isSourceStopping() || !process(pollContext, file)) {
