@@ -39,7 +39,7 @@ The main reason to create this connector is to provide a community alternative o
 >  <dependency>
 >    <groupId>org.neointegrations</groupId>
 >    <artifactId>ftps-connector</artifactId>
->    <version>1.0.3</version>
+>    <version>1.0.4</version>
 >    <classifier>mule-plugin</classifier>
 >  <dependency>
 >    ```
