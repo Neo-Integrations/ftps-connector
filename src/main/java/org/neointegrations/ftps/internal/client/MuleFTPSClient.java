@@ -1,12 +1,18 @@
 package org.neointegrations.ftps.internal.client;
 
+import org.apache.commons.net.PrintCommandListener;
+import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.mule.runtime.api.connection.ConnectionException;
+import org.neointegrations.ftps.internal.FTPSConnection;
+import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
@@ -18,24 +24,15 @@ import java.util.Locale;
 public class MuleFTPSClient extends FTPSClient {
 
     private static final Logger _logger = LoggerFactory.getLogger(MuleFTPSClient.class);
-
-    public MuleFTPSClient(boolean isImplicit, SSLContext context) {
-        super(isImplicit, context);
-    }
-
-    public MuleFTPSClient(boolean ftpsIsImplict) {
-        super(ftpsIsImplict);
-    }
-
-
     private boolean _sessionReuse = false;
 
-    public MuleFTPSClient(boolean isImplicit, SSLContext sslContext, boolean sessionReuse) {
+    public MuleFTPSClient(final boolean isImplicit,
+                          final SSLContext sslContext,
+                          final boolean sessionReuse) throws ConnectionException {
+
         super(isImplicit, sslContext);
         this._sessionReuse = sessionReuse;
     }
-
-
     // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
     // to share SSL session with the data connection
     @Override

@@ -5,10 +5,12 @@ import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionProvider;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.extension.api.annotation.Alias;
+import org.mule.runtime.extension.api.annotation.connectivity.ConnectionProviders;
 import org.mule.runtime.extension.api.annotation.execution.OnError;
 import org.mule.runtime.extension.api.annotation.execution.OnSuccess;
 import org.mule.runtime.extension.api.annotation.execution.OnTerminate;
 import org.mule.runtime.extension.api.annotation.param.*;
+import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 import org.mule.runtime.extension.api.annotation.param.display.Path;
 import org.mule.runtime.extension.api.annotation.param.display.Placement;
@@ -139,17 +141,17 @@ public class FTPSSources extends PollingSource<InputStream, FTPSFileAttributes> 
 
                 _logger.info("*** postAction.isAutoDelete(): {}", postAction.isAutoDelete());
                 if(postAction.isAutoDelete()) {
-                    connection.getFTPSClient().deleteFile(attrs.getPath() + File.separator + attrs.getName());
+                    connection.ftpsClient().deleteFile(attrs.getPath() + File.separator + attrs.getName());
                 }
 
                 _logger.info("*** postAction.getRenameTo(): {}", postAction.getRenameTo());
                 if(postAction.getRenameTo() != null) {
-                    connection.getFTPSClient().rename(attrs.getPath() + File.separator + attrs.getName(),
+                    connection.ftpsClient().rename(attrs.getPath() + File.separator + attrs.getName(),
                             attrs.getPath() + File.separator + postAction.getRenameTo());
                 }
 
                 if(postAction.getMoveToDirectory() != null) {
-                    connection.getFTPSClient().rename(attrs.getPath() + File.separator + attrs.getName(),
+                    connection.ftpsClient().rename(attrs.getPath() + File.separator + attrs.getName(),
                             postAction.getMoveToDirectory() + File.separator + attrs.getName());
                 }
 
@@ -180,16 +182,16 @@ public class FTPSSources extends PollingSource<InputStream, FTPSFileAttributes> 
                     connection  = _connectionProvider.connect();
 
                     if(postAction.isAutoDelete()) {
-                        connection.getFTPSClient().deleteFile(attrs.getPath() + File.separator + attrs.getName());
+                        connection.ftpsClient().deleteFile(attrs.getPath() + File.separator + attrs.getName());
                     }
 
                     if(postAction.getRenameTo() != null) {
-                        connection.getFTPSClient().rename(attrs.getPath() + File.separator + attrs.getName(),
+                        connection.ftpsClient().rename(attrs.getPath() + File.separator + attrs.getName(),
                                 attrs.getPath() + File.separator + postAction.getRenameTo());
                     }
 
                     if(postAction.getMoveToDirectory() != null) {
-                        connection.getFTPSClient().rename(attrs.getPath() + File.separator + attrs.getName(),
+                        connection.ftpsClient().rename(attrs.getPath() + File.separator + attrs.getName(),
                                 postAction.getMoveToDirectory() + File.separator + attrs.getName());
                     }
 

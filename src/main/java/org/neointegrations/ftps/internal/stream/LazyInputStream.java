@@ -25,7 +25,7 @@ public class LazyInputStream extends InputStream {
     private String _fileName;
     private final String _directory;
     private final boolean _deleteTheFileAfterRead;
-    private final FTPSConnectionProvider _provider;
+    private FTPSConnectionProvider _provider;
     private boolean _finished = false;
     private final boolean _createIntermediateFile;
 
@@ -47,108 +47,116 @@ public class LazyInputStream extends InputStream {
     public void close() throws IOException {
         try {
             // CLose the stream
-            if(_inputStream != null) {
+            if (_inputStream != null) {
                 _inputStream.close();
             }
             // Delete the file
-            if(_finished && _deleteTheFileAfterRead) {
+            if (_finished && _deleteTheFileAfterRead && _connection != null) {
+                try {
+                    _connection.ftpsClient().completePendingCommand();
+                } catch (Exception ignored) {
+                }
 
-                try {_connection.getFTPSClient().completePendingCommand();}
-                catch(Exception ignored) {}
-
-                if(!_connection.isConnected()) {
+                if (!_connection.isConnected()) {
                     _connection.reconnect();
                 } else {
                     FTPSUtil.requiredCommand(_connection);
                 }
                 String path = FTPSUtil.trimPath(_directory, this._fileName);
-                _connection.getFTPSClient().deleteFile(path);
+                _connection.ftpsClient().deleteFile(path);
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             _logger.error("Something wrong happened {}", e.getMessage(), e);
         } finally {
-            if(_connection != null) _connection.close();
+            if (_connection != null) _connection.close();
+            _provider = null;
+            _connection = null;
         }
     }
 
     @Override
     public long skip(long n) throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         return _inputStream.skip(n);
     }
 
     @Override
     public int read() throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read();
-        if(count == -1) _finished = true;
+        if (count == -1) _finished = true;
         return count;
     }
 
 
     @Override
     public int read(byte[] b) throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read();
-        if(count == -1) _finished = true;
+        if (count == -1) _finished = true;
         return count;
     }
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read(b, off, len);
-        if(count == -1) _finished = true;
+        if (count == -1) _finished = true;
         return count;
     }
 
     @Override
     public int available() throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         return _inputStream.available();
     }
 
     @Override
     public synchronized void reset() throws IOException {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         _inputStream.reset();
     }
 
     @Override
     public synchronized void mark(int readlimit) {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         _inputStream.mark(readlimit);
     }
 
     @Override
     public boolean markSupported() {
-        if(_inputStream == null) lazyLoadStream();
+        if (_inputStream == null) lazyLoadStream();
         return _inputStream.markSupported();
     }
 
     private void lazyLoadStream() {
-        if(_inputStream != null) return;
-
-        _lock.lock();
-        if(_inputStream == null) {
-            _inputStream = inputStream();
+        if (_inputStream != null) return;
+        try {
+            _lock.lock();
+            if (_inputStream == null) {
+                _inputStream = inputStream();
+            }
+        } finally {
+            _lock.unlock();
         }
-        _lock.unlock();
+
     }
 
     private InputStream inputStream() {
-        try{
+        try {
             _connection = _provider.connect();
-            if(_createIntermediateFile) {
+            _logger.info("Opening inputStream");
+            if (_createIntermediateFile) {
                 String intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + _fileName;
                 FTPSUtil.requiredCommand(_connection);
-                _connection.getFTPSClient().rename(FTPSUtil.trimPath(_directory, _fileName),
+                _connection.ftpsClient().rename(FTPSUtil.trimPath(_directory, _fileName),
                         FTPSUtil.trimPath(_directory, intermediateFileName));
                 _fileName = intermediateFileName;
+                _logger.info("Rename to {}", _fileName);
             }
             FTPSUtil.requiredCommand(_connection);
-            return _connection.getFTPSClient().retrieveFileStream(FTPSUtil.trimPath(_directory, _fileName));
-        }  catch(FileNotFoundException e) {
+            return _connection.ftpsClient().retrieveFileStream(FTPSUtil.trimPath(_directory, _fileName));
+        } catch (FileNotFoundException e) {
             _logger.error("File not found {}", _fileName, e);
             throw new RuntimeException(e);
         } catch (Exception e) {

@@ -52,11 +52,12 @@ public class FTPSOperations {
 
         if(_logger.isDebugEnabled()) _logger.debug("Listing a folder...");
         final List<Result<LazyInputStream, FTPSFileAttributes>> files = new ArrayList<Result<LazyInputStream, FTPSFileAttributes>>();
-        try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
 
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
+
+        try {
             final Map<String, Long> nameSizeMap = new HashMap<>();
             if(sizeCheckEnabled) {
                 /* Size check of each file is required to determine if a file has
@@ -64,9 +65,9 @@ public class FTPSOperations {
                  *   the size of each of the selected files between to query separated by timeBetweenSizeCheckInSeconds delay.
                  *   The programme will only select those files whose sizes are matched between the queries.
                  */
-                FTPSUtil.requiredCommand(connection);
+
                 // First query
-                final FTPFile[] listFirst = connection.getFTPSClient().listFiles(sourceFolder);
+                FTPFile[] listFirst = FTPSUtil.listFiles(connection, sourceFolder);
 
                 // Sleep for 2 seconds
                 Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
@@ -80,9 +81,8 @@ public class FTPSOperations {
                 }
             }
 
-            FTPSUtil.requiredCommand(connection);
             // 2nd query
-            final FTPFile[] list = connection.getFTPSClient().listFiles(sourceFolder);
+            final FTPFile[] list = FTPSUtil.listFiles(connection, sourceFolder);
             for (FTPFile file : list) {
 
                 // Filters starts
@@ -121,8 +121,8 @@ public class FTPSOperations {
             if(_logger.isDebugEnabled()) _logger.debug("Folder listing is done...");
             return files;
         } catch (Exception e) {
-            _logger.error("Unable list files {}", e.getMessage(), e);
-            throw new ConnectionException(e);
+            _logger.error("Unable to list files {}", e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -144,14 +144,15 @@ public class FTPSOperations {
 
         if(_logger.isDebugEnabled()) _logger.debug("Reading the file {}", fileName);
 
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
+
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
             String path = FTPSUtil.trimPath(sourceFolder, fileName);
 
             FTPSUtil.requiredCommand(connection);
-            String timestamp = connection.getFTPSClient().getModificationTime(path);
+            String timestamp = connection.ftpsClient().getModificationTime(path);
             if(timestamp == null) {
                 throw new FileNotFoundException("The file does not exists " + path);
             }
@@ -182,7 +183,7 @@ public class FTPSOperations {
             throw fnf;
         } catch (Exception e) {
             _logger.error("Unable read file {}", e.getMessage(), e);
-            throw new ConnectionException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -201,24 +202,23 @@ public class FTPSOperations {
                              @Placement(tab = ADVANCED_TAB) boolean createParentDirectory) throws ConnectionException {
 
         if(_logger.isDebugEnabled()) _logger.debug("Writing the file {}", targetFileName);
-
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
             if(!overwriteFile) {
                 FTPSUtil.requiredCommand(connection);
-                String timestamp = connection.getFTPSClient().getModificationTime(path);
+                String timestamp = connection.ftpsClient().getModificationTime(path);
                 if(timestamp != null) {
                     throw new IllegalStateException("File already exist at the target location: " + path);
                 }
             }
             if(createParentDirectory) {
                 FTPSUtil.requiredCommand(connection);
-                if (!connection.getFTPSClient().changeWorkingDirectory(targetFolder)) {
+                if (!connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                     FTPSUtil.requiredCommand(connection);
-                    connection.getFTPSClient().makeDirectory(targetFolder);
+                    connection.ftpsClient().makeDirectory(targetFolder);
                 }
             }
 
@@ -227,14 +227,14 @@ public class FTPSOperations {
                 String intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + targetFileName;
                 String intermediatePath = FTPSUtil.trimPath(targetFolder, intermediateFileName);
                 FTPSUtil.requiredCommand(connection);
-                status = connection.getFTPSClient().storeFile(intermediatePath, sourceStream);
+                status = connection.ftpsClient().storeFile(intermediatePath, sourceStream);
                 if(status) {
                     FTPSUtil.requiredCommand(connection);
-                    status  = connection.getFTPSClient().rename(intermediatePath, path);
+                    status  = connection.ftpsClient().rename(intermediatePath, path);
                 }
             } else {
                 FTPSUtil.requiredCommand(connection);
-                status = connection.getFTPSClient().storeFile(path, sourceStream);
+                status = connection.ftpsClient().storeFile(path, sourceStream);
             }
 
             if (status) {
@@ -248,7 +248,7 @@ public class FTPSOperations {
             throw is;
         } catch(Exception e) {
             _logger.error("Unable write file: {}", e.getMessage(), e);
-            throw new ConnectionException(e);
+            throw new RuntimeException(e);
         }
 
     }
@@ -261,18 +261,22 @@ public class FTPSOperations {
                           @Optional(defaultValue = "#[attributes.fileName]") String targetFileName,
                           @Optional(defaultValue = "true") @Placement( tab = ADVANCED_TAB) boolean ignoreErrorWhenFileNotPresent,
                           @Path(type = DIRECTORY, location = EXTERNAL)
-                              @Optional(defaultValue = "/home/share") String targetFolder) throws RuntimeException, FileNotFoundException {
+                              @Optional(defaultValue = "/home/share") String targetFolder) throws RuntimeException, FileNotFoundException, ConnectionException {
 
         if(_logger.isDebugEnabled()) _logger.debug("Removing the file {}", targetFileName);
+
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
+
+
         boolean status = false;
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
+
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
 
             FTPSUtil.requiredCommand(connection);
-            String timestamp = connection.getFTPSClient().getModificationTime(path);
+            String timestamp = connection.ftpsClient().getModificationTime(path);
             if( timestamp == null) {
                 if(!ignoreErrorWhenFileNotPresent) {
                     throw new FileNotFoundException("Unable to find the file " + path);
@@ -280,7 +284,7 @@ public class FTPSOperations {
                 return false;
             }
             FTPSUtil.requiredCommand(connection);
-            status = connection.getFTPSClient().deleteFile(path);
+            status = connection.ftpsClient().deleteFile(path);
             if (status) {
                 _logger.info("Deleted the file successfully");
             } else {
@@ -293,6 +297,7 @@ public class FTPSOperations {
             _logger.error("Something went wrong while deleting the file {}", targetFileName, exp);
             throw new RuntimeException(exp.getMessage(), exp);
         }
+
         if(_logger.isDebugEnabled()) _logger.debug("{} file removed successfully", targetFileName);
         return status;
     }
@@ -305,16 +310,19 @@ public class FTPSOperations {
                          @Path(type = DIRECTORY,location = EXTERNAL)
                              @Optional(defaultValue = "/home/share") String targetFolder,
                          @Optional(defaultValue = "false") boolean recursive
-    ) throws RuntimeException, FileNotFoundException {
+    ) throws RuntimeException, FileNotFoundException, ConnectionException {
 
         if(_logger.isDebugEnabled()) _logger.debug("Removing the directory {}", targetFolder);
+
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
+
+
         boolean status = false;
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
             FTPSUtil.requiredCommand(connection);
-            if(!connection.getFTPSClient().changeWorkingDirectory(targetFolder))
+            if(!connection.ftpsClient().changeWorkingDirectory(targetFolder))
                 throw new FileNotFoundException("Directory does not exists "+targetFolder);
 
             if(recursive) {
@@ -322,7 +330,7 @@ public class FTPSOperations {
                 status = true;
             } else {
                 FTPSUtil.requiredCommand(connection);
-                status = connection.getFTPSClient().removeDirectory(targetFolder);
+                status = connection.ftpsClient().removeDirectory(targetFolder);
                 if (status) {
                     _logger.info("Deleted the folder successfully");
                 } else {
@@ -347,20 +355,22 @@ public class FTPSOperations {
                          @Connection FTPSConnection connection,
                          @Path(type = DIRECTORY, location = EXTERNAL)
                              @Optional(defaultValue = "/home/share") String targetFolder)
-            throws RuntimeException, IllegalStateException {
+            throws RuntimeException, ConnectionException {
 
         if(_logger.isDebugEnabled()) _logger.debug("Creating a directory {}", targetFolder);
+
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
+
         boolean status = false;
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
             FTPSUtil.requiredCommand(connection);
-            if(connection.getFTPSClient().changeWorkingDirectory(targetFolder))
+            if(connection.ftpsClient().changeWorkingDirectory(targetFolder))
                 throw new IllegalStateException("Folder already exists");
 
             FTPSUtil.requiredCommand(connection);
-            status = connection.getFTPSClient().makeDirectory(targetFolder);
+            status = connection.ftpsClient().makeDirectory(targetFolder);
 
             if(status == false) throw new Exception("Unable to create folder");
 
@@ -387,9 +397,13 @@ public class FTPSOperations {
                          @Optional String targetFileName,
                          @Optional(defaultValue = "true")
                             @Placement(tab = ADVANCED_TAB) boolean createParentDirectory)
-            throws IllegalArgumentException, FileNotFoundException, RuntimeException {
+            throws ConnectionException, FileNotFoundException, RuntimeException {
 
         if(_logger.isDebugEnabled()) _logger.debug("Rename operation starting...");
+
+        if (!connection.isConnected()) {
+            throw new ConnectionException("Connection is not healthy. It will be retried");
+        }
 
         boolean isFileRename = false;
         if(sourceFolder == null || targetFolder == null) {
@@ -407,29 +421,26 @@ public class FTPSOperations {
         if(_logger.isDebugEnabled()) _logger.debug("Renaming the source path {} to {}", sourcePath, targetPath);
         boolean status = false;
         try {
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Connection is not healthy. It will be retried");
-            }
+            FTPSUtil.requiredCommand(connection);
             if(isFileRename) {
-                FTPSUtil.requiredCommand(connection);
-                String timestamp = connection.getFTPSClient().getModificationTime(sourcePath);
+                String timestamp = connection.ftpsClient().getModificationTime(sourcePath);
                 if(timestamp == null) {
                     throw new FileNotFoundException("The file does not exists " + sourcePath);
                 }
             } else {
-                FTPSUtil.requiredCommand(connection);
-                if(!connection.getFTPSClient().changeWorkingDirectory(sourcePath))
+                if(!connection.ftpsClient().changeWorkingDirectory(sourcePath))
                     throw new IllegalStateException("Folder does not exists");
             }
+
             FTPSUtil.requiredCommand(connection);
             if(createParentDirectory) {
-                if (!connection.getFTPSClient().changeWorkingDirectory(targetFolder)) {
+                if (!connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                     FTPSUtil.requiredCommand(connection);
-                    connection.getFTPSClient().makeDirectory(targetFolder);
+                    connection.ftpsClient().makeDirectory(targetFolder);
                 }
             }
             FTPSUtil.requiredCommand(connection);
-            status  = connection.getFTPSClient().rename(sourcePath, targetPath);
+            status  = connection.ftpsClient().rename(sourcePath, targetPath);
             if(status == false) throw new Exception("Unable to rename");
         } catch (FileNotFoundException fnf) {
             throw fnf;
