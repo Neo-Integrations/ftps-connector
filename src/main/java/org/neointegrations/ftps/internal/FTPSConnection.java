@@ -26,6 +26,8 @@ public final class FTPSConnection implements AutoCloseable {
     public FTPSConnectionProvider getProvider() {
         return this._provider;
     }
+
+    @Override
     public void close() {
         _provider.disconnect(this);
     }

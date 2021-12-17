@@ -450,6 +450,6 @@ public class FTPSOperations {
         }
 
         if(_logger.isDebugEnabled()) _logger.debug("Rename operation finished");
-        return status;
+        return true;
     }
 }

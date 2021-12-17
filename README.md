@@ -92,7 +92,10 @@ The main reason to create this connector is to provide a community alternative o
 </ftps:config>
 ```
 Where
-- `sslSessionReuse:` Default is `true`. If the FTPS server does not support it set it to `false`. Most of the modern FTPS server reuse TLS session for better security.
+- `sslSessionReuse:` Default is `true`. If the FTPS server does not support it set it to `false`. Most of the modern FTPS server reuse TLS session for better security. There is a existing issue raised on the [Apache FTPS client](https://issues.apache.org/jira/browse/NET-408) which presents it reusing SSL session. I have implemented a solution taken from cyberduck library which has fixed the issue for jdk1.8 If you are using JDK11 or above, the solution will not work. Please raise a issue in this repo if anyone is using jdk11 or above then I will create a seperate release for that. Please note, it is important to pass a system property to the Mule application for the TLS session share to work in JDK8u161 or above java version. 
+  - Using studio VM argument `-M-Djdk.tls.useExtendedMasterSecret=false`
+  - Using java: `System.setProperty("jdk.tls.useExtendedMasterSecret", "false");`
+  - MuleSoft runtime manager property windows pass the =`jdk.tls.useExtendedMasterSecret` and value=`false`
 - `serverTimeZone:` Set the FTPS server's time zone. Default is `Europe/London`.
 - `timeout:` Connection timeout in `milliseconds`. Make sure to give ample time for the client and server to setup a TLS connection. 60000 (60 seconds) is recommended.
 - `socketTimeout:`  Socket read or write timeout in `milliseconds`. The connector has been designed to reconnect when the connection become stale, but I would still advise to keep the timeout not very large and not very small. I would suggest no bigger than 1 hour timeout and no lesser than 5 minutes
