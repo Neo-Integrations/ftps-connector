@@ -1,4 +1,4 @@
-package org.neointegrations.ftps.internal;
+package org.neointegrations.ftps.api;
 
 import org.apache.commons.net.ftp.FTPFile;
 import org.mule.extension.file.common.api.AbstractFileAttributes;

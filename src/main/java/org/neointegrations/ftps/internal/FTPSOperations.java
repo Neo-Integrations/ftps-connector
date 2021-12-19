@@ -15,6 +15,8 @@ import org.mule.runtime.extension.api.annotation.param.display.Path;
 import org.mule.runtime.extension.api.annotation.param.display.Placement;
 import org.mule.runtime.extension.api.annotation.param.display.Summary;
 import org.mule.runtime.extension.api.runtime.operation.Result;
+import org.neointegrations.ftps.api.FTPSFileAttributes;
+import org.neointegrations.ftps.api.FTPSFileMatcher;
 import org.neointegrations.ftps.internal.stream.LazyInputStream;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;

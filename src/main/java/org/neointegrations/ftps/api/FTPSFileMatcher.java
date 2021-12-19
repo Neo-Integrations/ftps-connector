@@ -1,4 +1,4 @@
-package org.neointegrations.ftps.internal;
+package org.neointegrations.ftps.api;
 
 import org.mule.extension.file.common.api.matcher.FileMatcher;
 import org.mule.runtime.extension.api.annotation.param.Optional;

@@ -8,15 +8,13 @@ import org.mule.extension.file.common.api.matcher.FileMatcher;
 import org.mule.extension.file.common.api.matcher.NullFilePayloadPredicate;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.internal.FTPSConnection;
-import org.neointegrations.ftps.internal.FTPSFileAttributes;
+import org.neointegrations.ftps.api.FTPSFileAttributes;
 import org.neointegrations.ftps.internal.client.MuleFTPSClient;
-import org.neointegrations.ftps.internal.stream.LazyInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.util.function.Predicate;
 
 public class FTPSUtil {
