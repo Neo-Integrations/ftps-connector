@@ -77,7 +77,7 @@ public class LazyInputStream extends InputStream {
                 // Rename to the original file name if
                 // - the file was renamed to intermediate name
                 // - the transfer was started but did not finished
-                renameToIntermediateOrPrevious(false);
+                renameToIntermediateOrOriginal(false);
             }
         } catch (Exception e) {
             _logger.error("Something wrong happened {}", e.getMessage(), e);
@@ -156,8 +156,6 @@ public class LazyInputStream extends InputStream {
         if (_inputStream == null) {
             _inputStream = inputStream();
         }
-
-
     }
 
     private InputStream inputStream() {
@@ -165,7 +163,7 @@ public class LazyInputStream extends InputStream {
             _connection = _provider.connect();
             _logger.info("Opening inputStream");
             if (_createIntermediateFile) {
-                renameToIntermediateOrPrevious(true);
+                renameToIntermediateOrOriginal(true);
             }
             FTPSUtil.requiredCommand(_connection);
             return _connection.ftpsClient().retrieveFileStream(FTPSUtil.trimPath(_directory, _fileName));
@@ -178,7 +176,7 @@ public class LazyInputStream extends InputStream {
         }
     }
 
-    private void renameToIntermediateOrPrevious(boolean intermediate)
+    private void renameToIntermediateOrOriginal(boolean intermediate)
             throws ConnectionException, IOException {
         String intermediateFileName = null;
 

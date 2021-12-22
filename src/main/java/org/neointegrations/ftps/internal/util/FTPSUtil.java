@@ -12,9 +12,11 @@ import org.neointegrations.ftps.api.FTPSFileAttributes;
 import org.neointegrations.ftps.internal.client.MuleFTPSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.scope.ScopedObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.function.Predicate;
 
 public class FTPSUtil {
@@ -33,26 +35,29 @@ public class FTPSUtil {
         return directory + File.separator + fileName;
     }
 
-    public static void deleteRecursive(String targetFolder, FTPSConnection connection) throws IOException, ConnectionException {
+    public static void deleteRecursive(String targetFolder, FTPSConnection connection)
+            throws IOException, ConnectionException {
+
         requiredCommand(connection);
+        FTPFile[] folders = connection.ftpsClient().listDirectories(targetFolder);
         FTPFile[] files = connection.ftpsClient().listFiles(targetFolder);
 
-        if (files.length > 0) {
-            for (FTPFile file : files) {
-                if (file.getName().startsWith(".")) {
-                    continue;
-                }
-                String targetPath = targetFolder + File.separator + file.getName();
-                if (file.isDirectory()) {
-                    deleteRecursive(targetPath, connection);
-                } else {
-                    requiredCommand(connection);
-                    connection.ftpsClient().deleteFile(targetPath);
-                }
+        // Delete all the files from current the folder
+        for (FTPFile file : files) {
+            if (file.getName().equals(".") || file.getName().equals("..")) {
+                continue;
             }
-        } else {
-            requiredCommand(connection);
-            connection.ftpsClient().removeDirectory(targetFolder);
+            connection.ftpsClient().deleteFile(FTPSUtil.trimPath(targetFolder,file.getName()));
+        }
+        // Recursively delete files and folders from the child folders
+        for (FTPFile folder : folders) {
+            if (folder.getName().equals(".") || folder.getName().equals("..")) {
+                continue;
+            }
+            // recursive
+            String folderName = FTPSUtil.trimPath(targetFolder,folder.getName());
+            deleteRecursive(folderName, connection);
+            connection.ftpsClient().removeDirectory(folderName);
         }
     }
 
@@ -103,22 +108,23 @@ public class FTPSUtil {
         }
     }
 
-    public static void logoutQuietly(final MuleFTPSClient client ) {
+    public static void logoutQuietly(final MuleFTPSClient client) {
         try {
             if (client.isAvailable()) {
                 client.logout();
             }
         } catch (Exception e) {
-            _logger.warn("An exception occurred while logout {}",e.getMessage(), e);
+            _logger.warn("An exception occurred while logout {}", e.getMessage(), e);
         }
     }
-    public static void disconnectQuietly(final MuleFTPSClient client ) {
+
+    public static void disconnectQuietly(final MuleFTPSClient client) {
         try {
             if (client.isConnected()) {
                 client.disconnect();
             }
         } catch (Exception e) {
-            _logger.warn("An exception occurred while disconnecting {}",e.getMessage(), e);
+            _logger.warn("An exception occurred while disconnecting {}", e.getMessage(), e);
         }
     }
 
@@ -127,12 +133,12 @@ public class FTPSUtil {
         FTPFile[] list = null;
         try {
             FTPSUtil.requiredCommand(connection);
-            if(_logger.isDebugEnabled()) _logger.debug("Listing: {}", sourceFolder);
+            if (_logger.isDebugEnabled()) _logger.debug("Listing: {}", sourceFolder);
             list = connection.ftpsClient().listFiles(sourceFolder);
         } catch (IOException io) {
             _logger.error("Exception while listening folder. {}", io.getMessage());
             if ("Invalid SSL Session".equals(io.getMessage())) {
-                if(connection.ftpsClient().isConnected()) {
+                if (connection.ftpsClient().isConnected()) {
                     connection.ftpsClient().disconnect();
                 }
                 connection.reconnect();
@@ -142,11 +148,41 @@ public class FTPSUtil {
             }
         }
         int reply = connection.ftpsClient().getReplyCode();
-        if(_logger.isDebugEnabled()) _logger.debug("ReplyCode: {}", reply);
+        if (_logger.isDebugEnabled()) _logger.debug("ReplyCode: {}", reply);
         if (FTPReply.isNegativePermanent(connection.ftpsClient().getReplyCode())) {
             _logger.error("File / Folder does not exists. ReplyCode={}, Folder={}", reply, sourceFolder);
             throw new RuntimeException("File / Folder does not exists");
         }
         return list;
+    }
+
+    public static boolean createParentDirectory(final FTPSConnection connection, String dir)
+            throws IOException, ConnectionException {
+
+        if (dir.endsWith("/") || dir.endsWith("\\")) {
+            dir = dir.substring(0, dir.length() - 1);
+        }
+        String[] dirs = dir.split("[\\\\|/]");
+        StringBuilder sb = new StringBuilder();
+        for (int idx = 0; idx < dirs.length; idx++) {
+            if (idx == 0) {
+                if (dirs[idx] == null || "".equals(dirs[idx].trim())) {
+                    // Fow unix like file systems, this will start from the root. For example "/"
+                    sb.append(File.separator);
+                } else {
+                    // For windows, this will be the driver name, for example "c:\" or "d:\"
+                    sb.append(dirs[idx].trim()).append(File.separator);
+                }
+                continue;
+            }
+            sb.append(dirs[idx]).append(File.separator);
+            String cd = sb.substring(0, sb.length() - 1);
+            if (!connection.ftpsClient().changeWorkingDirectory(cd)) {
+                //FTPSUtil.requiredCommand(connection);
+                if (connection.ftpsClient().makeDirectory(cd) == false)
+                    return false;
+            }
+        }
+        return true;
     }
 }
