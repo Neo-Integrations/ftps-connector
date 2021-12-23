@@ -16,12 +16,14 @@ import org.springframework.aop.scope.ScopedObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
 public class FTPSUtil {
 
     private static final Logger _logger = LoggerFactory.getLogger(FTPSUtil.class);
+    public final static DateTimeFormatter TS_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMddhhmmssSSS");
 
     public static Predicate<FTPSFileAttributes> getPredicate(FileMatcher builder) {
         return (Predicate) (builder != null ? builder.build() : new NullFilePayloadPredicate());

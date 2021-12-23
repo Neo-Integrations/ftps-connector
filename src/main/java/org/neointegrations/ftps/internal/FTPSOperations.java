@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -112,8 +113,8 @@ public class FTPSOperations {
 
                 // Filters ends
                 final LazyInputStream lazyStream = new LazyInputStream(sourceFolder,
-                        file.getName(), deleteTheFileAfterRead,
-                        connection.getProvider(), createIntermediateFile);
+                        file.getName(), deleteTheFileAfterRead, connection.getProvider(),
+                        createIntermediateFile, attr.getTimestamp());
 
                 files.add(Result.<LazyInputStream, FTPSFileAttributes>builder()
                         .output(lazyStream)
@@ -168,7 +169,8 @@ public class FTPSOperations {
                     fileName, Calendar.getInstance().getTime(), null);
 
             final LazyInputStream lazyStream = new LazyInputStream(sourceFolder, fileName,
-                    deleteFileAfterRead, connection.getProvider(), createIntermediateFile);
+                    deleteFileAfterRead, connection.getProvider(),
+                    createIntermediateFile, attr.getTimestamp());
 
             if (_logger.isDebugEnabled()) _logger.debug("{} file being read...", fileName);
 
@@ -257,33 +259,42 @@ public class FTPSOperations {
     public boolean rmFile(@Config final FTPSConfiguration ftpsConfig,
                           @Connection FTPSConnection connection,
                           @Optional(defaultValue = "#[attributes.fileName]") String targetFileName,
+                          @Optional(defaultValue = "#[attributes.timestamp]")
+                                  @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
+                                      LocalDateTime timestamp,
                           @Optional(defaultValue = "true") @Placement(tab = ADVANCED_TAB)
                                   boolean ignoreErrorWhenFileNotPresent,
                           @Path(type = DIRECTORY, location = EXTERNAL)
                           @Optional(defaultValue = "/home/share") String targetFolder) throws RuntimeException, FileNotFoundException, ConnectionException {
 
         if (_logger.isDebugEnabled()) _logger.debug("Removing the file {}", targetFileName);
-
         if (!connection.isConnected()) {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
-
-
         boolean status = false;
         try {
 
+            String tsStr = "TIMESTAMP";
+            if(timestamp != null) {
+                tsStr = timestamp.format(FTPSUtil.TS_FORMATTER);
+            }
+
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
+            String intermediatePath = FTPSUtil.trimPath(targetFolder, "__" + tsStr + "_" + targetFileName);
 
             FTPSUtil.requiredCommand(connection);
-            String timestamp = connection.ftpsClient().getModificationTime(path);
-            if (timestamp == null) {
+            String ts = connection.ftpsClient().getModificationTime(path);
+            String tsIntermediate = connection.ftpsClient().getModificationTime(intermediatePath);
+            if (ts == null && tsIntermediate == null) {
                 if (!ignoreErrorWhenFileNotPresent) {
                     throw new FileNotFoundException("Unable to find the file " + path);
                 }
                 return false;
             }
             FTPSUtil.requiredCommand(connection);
-            status = connection.ftpsClient().deleteFile(path);
+            if(ts != null) status = connection.ftpsClient().deleteFile(path);
+            else status = connection.ftpsClient().deleteFile(intermediatePath);
+
             if (status) {
                 _logger.info("Deleted the file successfully");
             } else {

@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.locks.ReentrantLock;
@@ -28,13 +30,15 @@ public class LazyInputStream extends InputStream {
     private boolean _finished = false;
     private boolean _started = false;
     private final boolean _createIntermediateFile;
+    private final String _timestamp;
 
 
     public LazyInputStream(final String directory,
                            final String fileName,
                            final boolean _deleteTheFileAfterRead,
                            final FTPSConnectionProvider provider,
-                           final boolean createIntermediateFile) throws ConnectionException {
+                           final boolean createIntermediateFile,
+                           final LocalDateTime timestamp) throws ConnectionException {
 
         this._directory = directory;
         this._deleteTheFileAfterRead = _deleteTheFileAfterRead;
@@ -42,6 +46,11 @@ public class LazyInputStream extends InputStream {
         this._originalFileName = fileName;
         this._provider = provider;
         this._createIntermediateFile = createIntermediateFile;
+        if(timestamp != null) {
+            this._timestamp = timestamp.format(FTPSUtil.TS_FORMATTER);
+        } else {
+            this._timestamp = "TIMESTAMP";
+        }
     }
 
     @Override
@@ -181,7 +190,7 @@ public class LazyInputStream extends InputStream {
         String intermediateFileName = null;
 
         if (intermediate) {
-            intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + _fileName;
+            intermediateFileName = "__" + this._timestamp + "_" + _fileName;
         } else {
             intermediateFileName = this._originalFileName;
         }
