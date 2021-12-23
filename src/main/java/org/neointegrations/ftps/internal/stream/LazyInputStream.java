@@ -46,11 +46,7 @@ public class LazyInputStream extends InputStream {
         this._originalFileName = fileName;
         this._provider = provider;
         this._createIntermediateFile = createIntermediateFile;
-        if(timestamp != null) {
-            this._timestamp = timestamp.format(FTPSUtil.TS_FORMATTER);
-        } else {
-            this._timestamp = "TIMESTAMP";
-        }
+        this._timestamp = FTPSUtil.timestamp(timestamp);
     }
 
     @Override
@@ -190,7 +186,7 @@ public class LazyInputStream extends InputStream {
         String intermediateFileName = null;
 
         if (intermediate) {
-            intermediateFileName = "__" + this._timestamp + "_" + _fileName;
+            intermediateFileName = FTPSUtil.makeIntermediateFileName(this._timestamp, _fileName);
         } else {
             intermediateFileName = this._originalFileName;
         }

@@ -273,14 +273,9 @@ public class FTPSOperations {
         }
         boolean status = false;
         try {
-
-            String tsStr = "TIMESTAMP";
-            if(timestamp != null) {
-                tsStr = timestamp.format(FTPSUtil.TS_FORMATTER);
-            }
-
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
-            String intermediatePath = FTPSUtil.trimPath(targetFolder, "__" + tsStr + "_" + targetFileName);
+            String intermediatePath = FTPSUtil.trimPath(targetFolder,
+                    FTPSUtil.makeIntermediateFileName(timestamp, targetFileName));
 
             FTPSUtil.requiredCommand(connection);
             String ts = connection.ftpsClient().getModificationTime(path);
@@ -422,7 +417,10 @@ public class FTPSOperations {
                           @Optional(defaultValue = "/share/target") String targetFolder,
                           @Optional String targetFileName,
                           @Optional(defaultValue = "true")
-                          @Placement(tab = ADVANCED_TAB) boolean createParentDirectory)
+                          @Placement(tab = ADVANCED_TAB) boolean createParentDirectory,
+                          @Optional(defaultValue = "#[attributes.timestamp]")
+                              @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
+                                      LocalDateTime timestamp)
             throws ConnectionException, FileNotFoundException, RuntimeException {
 
         if (_logger.isDebugEnabled()) _logger.debug("Rename operation starting...");
@@ -449,21 +447,28 @@ public class FTPSOperations {
         try {
             FTPSUtil.requiredCommand(connection);
             if (isFileRename) {
-                String timestamp = connection.ftpsClient().getModificationTime(sourcePath);
-                if (timestamp == null) {
-                    throw new FileNotFoundException("The file does not exists " + sourcePath);
+                String fName = FTPSUtil.makeIntermediateFileName(timestamp, sourceFileName);
+                String intermediatePath = FTPSUtil.trimPath(sourceFolder, fName);
+
+                if (connection.ftpsClient().getModificationTime(sourcePath) == null) {
+                    if(connection.ftpsClient().getModificationTime(intermediatePath) == null) {
+                        throw new FileNotFoundException("The file does not exists " + sourcePath);
+                    } else {
+                        sourcePath = intermediatePath;
+                    }
                 }
             } else {
                 if (!connection.ftpsClient().changeWorkingDirectory(sourcePath))
                     throw new IllegalStateException("Folder does not exists");
             }
 
-            FTPSUtil.requiredCommand(connection);
             if (createParentDirectory) {
+                FTPSUtil.requiredCommand(connection);
                 FTPSUtil.createParentDirectory(connection, targetFolder);
             }
             FTPSUtil.requiredCommand(connection);
             status = connection.ftpsClient().rename(sourcePath, targetPath);
+
             if (status == false) throw new Exception("Unable to rename");
         } catch (FileNotFoundException fnf) {
             throw fnf;

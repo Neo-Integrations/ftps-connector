@@ -16,6 +16,7 @@ import org.springframework.aop.scope.ScopedObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.function.Predicate;
@@ -23,7 +24,8 @@ import java.util.function.Predicate;
 public class FTPSUtil {
 
     private static final Logger _logger = LoggerFactory.getLogger(FTPSUtil.class);
-    public final static DateTimeFormatter TS_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMddhhmmssSSS");
+    private final static DateTimeFormatter TS_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMddhhmmssSSS");
+    private final static String TIME_STAMP_DEFAULT_STR = "TS";
 
     public static Predicate<FTPSFileAttributes> getPredicate(FileMatcher builder) {
         return (Predicate) (builder != null ? builder.build() : new NullFilePayloadPredicate());
@@ -186,5 +188,26 @@ public class FTPSUtil {
             }
         }
         return true;
+    }
+
+    public static String makeIntermediateFileName(LocalDateTime timestamp, String fName) {
+        if(fName == null) return fName;
+        String tsStr = timestamp(timestamp);
+        return "__" + tsStr + "_" + fName;
+    }
+    public static String makeIntermediateFileName(String timestamp, String fName) {
+        if(fName == null) return fName;
+        String tsStr = TIME_STAMP_DEFAULT_STR;
+        if(timestamp != null) {
+            tsStr = timestamp;
+        }
+        return "__" + tsStr + "_" + fName;
+    }
+    public static String timestamp(LocalDateTime timestamp){
+        if(timestamp != null) {
+            return timestamp.format(TS_FORMATTER);
+        } else {
+            return TIME_STAMP_DEFAULT_STR;
+        }
     }
 }
