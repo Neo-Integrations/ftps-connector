@@ -106,7 +106,7 @@ public class FTPSUtil {
 
     public static void close(AutoCloseable closeable) {
         try {
-            closeable.close();
+            if(closeable != null) closeable.close();
         } catch (Exception e) {
             _logger.warn("An exception occurred while closing {}", closeable, e);
         }
@@ -114,7 +114,7 @@ public class FTPSUtil {
 
     public static void logoutQuietly(final MuleFTPSClient client) {
         try {
-            if (client.isAvailable()) {
+            if (client != null && client.isAvailable()) {
                 client.logout();
             }
         } catch (Exception e) {
@@ -124,7 +124,7 @@ public class FTPSUtil {
 
     public static void disconnectQuietly(final MuleFTPSClient client) {
         try {
-            if (client.isConnected()) {
+            if (client != null && client.isConnected()) {
                 client.disconnect();
             }
         } catch (Exception e) {
@@ -213,7 +213,7 @@ public class FTPSUtil {
 
     public static void completePendingCommand(FTPSConnection connection) {
         try {
-            connection.ftpsClient().completePendingCommand();
+            if(connection != null) connection.ftpsClient().completePendingCommand();
         } catch (Exception e) {
             _logger.warn("An exception occurred while calling completePendingCommand() {}", e.getMessage(), e);
         }
