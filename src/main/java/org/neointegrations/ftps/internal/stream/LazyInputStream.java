@@ -54,21 +54,17 @@ public class LazyInputStream extends InputStream {
         try {
             // CLose the stream
             if (_inputStream != null) {
-                _inputStream.close();
+                FTPSUtil.close(this._inputStream);
+                FTPSUtil.completePendingCommand(this._connection);
             }
 
+            // Delete the file, if
+            // - the transfer has been finished successfully,
+            // - the _deleteTheFileAfterRead == true and
+            // - the connection object was for the file.
             if ((_started == true && _finished == true) &&
                     _deleteTheFileAfterRead == true &&
                     _connection != null) {
-                // Delete the file, if
-                // - the transfer has been finished successfully,
-                // - the _deleteTheFileAfterRead == true and
-                // - the connection object was for the file.
-                try {
-                    _connection.ftpsClient().completePendingCommand();
-                } catch (Exception ignored) {
-                }
-
                 // Reconnect if connection was dropped
                 if (!_connection.isConnected()) {
                     _connection.reconnect();
@@ -87,11 +83,6 @@ public class LazyInputStream extends InputStream {
         } catch (Exception e) {
             _logger.error("Something wrong happened {}", e.getMessage(), e);
         } finally {
-
-            if(_logger.isDebugEnabled()) {
-                _logger.debug("_started={} _finished={} _deleteTheFileAfterRead={} _connection={}", _started, _finished, _deleteTheFileAfterRead, _connection);
-                _logger.debug("_fileName={} _originalFileName={} ", _fileName, _originalFileName);
-            }
             // reset everything
             if (_connection != null) FTPSUtil.close(_connection);
             _provider = null;
@@ -194,6 +185,7 @@ public class LazyInputStream extends InputStream {
         FTPSUtil.requiredCommand(_connection);
         _connection.ftpsClient().rename(FTPSUtil.trimPath(_directory, _fileName),
                 FTPSUtil.trimPath(_directory, intermediateFileName));
+
         _fileName = intermediateFileName;
     }
 

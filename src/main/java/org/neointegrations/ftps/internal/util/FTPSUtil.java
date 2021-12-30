@@ -210,4 +210,12 @@ public class FTPSUtil {
             return TIME_STAMP_DEFAULT_STR;
         }
     }
+
+    public static void completePendingCommand(FTPSConnection connection) {
+        try {
+            connection.ftpsClient().completePendingCommand();
+        } catch (Exception e) {
+            _logger.warn("An exception occurred while calling completePendingCommand() {}", e.getMessage(), e);
+        }
+    }
 }

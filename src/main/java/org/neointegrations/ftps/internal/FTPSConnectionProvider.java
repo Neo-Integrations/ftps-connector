@@ -30,16 +30,13 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
 
     private final Logger _logger = LoggerFactory.getLogger(FTPSConnectionProvider.class);
 
-    @Optional(defaultValue = "user")
     @Parameter
     private String user;
 
-    @Optional(defaultValue = "password")
     @Password
     @Parameter
     private String password;
 
-    @Optional(defaultValue = "localhost")
     @Parameter
     private String host;
 
@@ -224,6 +221,7 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
             // Timeout settings
             _client.setDefaultTimeout(timeout);
             _client.setConnectTimeout(timeout);
+
             _client.connect(host, port);
 
             _client.setSoTimeout(socketTimeout);
