@@ -70,7 +70,7 @@ public class FTPSOperations {
                  */
 
                 // First query
-                FTPFile[] listFirst = FTPSUtil.listFiles(connection, sourceFolder);
+                FTPFile[] listFirst = connection.ftpsClient().listFiles(sourceFolder);
 
                 // Sleep for 2 seconds
                 Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
@@ -85,7 +85,7 @@ public class FTPSOperations {
             }
 
             // 2nd query
-            final FTPFile[] list = FTPSUtil.listFiles(connection, sourceFolder);
+            final FTPFile[] list = connection.ftpsClient().listFiles(sourceFolder);
             for (FTPFile file : list) {
 
                 // Filters starts
@@ -123,6 +123,9 @@ public class FTPSOperations {
             }
             if (_logger.isDebugEnabled()) _logger.debug("Folder listing is done...");
             return files;
+        } catch (ConnectionException e) {
+            _logger.error("Unable to list files {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
             _logger.error("Unable to list files {}", e.getMessage(), e);
             throw new RuntimeException(e);
@@ -153,8 +156,6 @@ public class FTPSOperations {
 
         try {
             String path = FTPSUtil.trimPath(sourceFolder, fileName);
-
-            FTPSUtil.requiredCommand(connection);
             String timestamp = connection.ftpsClient().getModificationTime(path);
             if (timestamp == null) {
                 throw new FileNotFoundException("The file does not exists " + path);
@@ -209,11 +210,12 @@ public class FTPSOperations {
         if (!connection.isConnected()) {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
+
         try {
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
+            String timestamp = connection.ftpsClient().getModificationTime(path);
+            if (_logger.isDebugEnabled()) _logger.debug("timestamp={}", timestamp);
             if (!overwriteFile) {
-                FTPSUtil.requiredCommand(connection);
-                String timestamp = connection.ftpsClient().getModificationTime(path);
                 if (timestamp != null) {
                     throw new IllegalStateException("File already exist at the target location: " + path);
                 }
@@ -226,23 +228,26 @@ public class FTPSOperations {
             if (createIntermediateFile) {
                 String intermediateFileName = "__" + Calendar.getInstance().getTimeInMillis() + "_" + targetFileName;
                 String intermediatePath = FTPSUtil.trimPath(targetFolder, intermediateFileName);
-                FTPSUtil.requiredCommand(connection);
                 status = connection.ftpsClient().storeFile(intermediatePath, sourceStream);
                 if (status) {
-                    FTPSUtil.requiredCommand(connection);
+                    if(timestamp != null) {
+                        if (_logger.isDebugEnabled()) _logger.debug("{} file deleted", path);
+                        connection.ftpsClient().deleteFile(path);
+                    }
                     status = connection.ftpsClient().rename(intermediatePath, path);
                 }
             } else {
-                FTPSUtil.requiredCommand(connection);
+                if(timestamp != null) {
+                    if (_logger.isDebugEnabled()) _logger.debug("{} file deleted", path);
+                    connection.ftpsClient().deleteFile(path);
+                }
                 status = connection.ftpsClient().storeFile(path, sourceStream);
             }
-
             if (status) {
                 if (_logger.isDebugEnabled()) _logger.debug("{} successfully created", targetFileName);
             } else {
                 throw new Exception("Unable to create the file");
             }
-
             return true;
         } catch (IllegalStateException is) {
             throw is;
@@ -260,8 +265,8 @@ public class FTPSOperations {
                           @Connection FTPSConnection connection,
                           @Optional(defaultValue = "#[attributes.fileName]") String targetFileName,
                           @Optional(defaultValue = "#[attributes.timestamp]")
-                                  @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
-                                      LocalDateTime timestamp,
+                          @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
+                                  LocalDateTime timestamp,
                           @Optional(defaultValue = "true") @Placement(tab = ADVANCED_TAB)
                                   boolean ignoreErrorWhenFileNotPresent,
                           @Path(type = DIRECTORY, location = EXTERNAL)
@@ -277,7 +282,6 @@ public class FTPSOperations {
             String intermediatePath = FTPSUtil.trimPath(targetFolder,
                     FTPSUtil.makeIntermediateFileName(timestamp, targetFileName));
 
-            FTPSUtil.requiredCommand(connection);
             String ts = connection.ftpsClient().getModificationTime(path);
             String tsIntermediate = connection.ftpsClient().getModificationTime(intermediatePath);
             if (ts == null && tsIntermediate == null) {
@@ -286,8 +290,7 @@ public class FTPSOperations {
                 }
                 return false;
             }
-            FTPSUtil.requiredCommand(connection);
-            if(ts != null) status = connection.ftpsClient().deleteFile(path);
+            if (ts != null) status = connection.ftpsClient().deleteFile(path);
             else status = connection.ftpsClient().deleteFile(intermediatePath);
 
             if (status) {
@@ -332,7 +335,6 @@ public class FTPSOperations {
 
         boolean status = false;
         try {
-            FTPSUtil.requiredCommand(connection);
             if (!connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                 if (ignoreErrorWhenFolderDoesNotExists) return false;
                 else throw new FileNotFoundException("Directory does not exists " + targetFolder);
@@ -340,7 +342,6 @@ public class FTPSOperations {
 
             if (recursive) FTPSUtil.deleteRecursive(targetFolder, connection);
 
-            FTPSUtil.requiredCommand(connection);
             if (connection.ftpsClient().removeDirectory(targetFolder))
                 _logger.info("Deleted the folder successfully");
             else
@@ -377,7 +378,6 @@ public class FTPSOperations {
 
         boolean status = true;
         try {
-            FTPSUtil.requiredCommand(connection);
             if (connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                 if (ignoreErrorWhenFolderExists == false) {
                     throw new IllegalStateException("Folder already exists");
@@ -388,7 +388,6 @@ public class FTPSOperations {
             if (createParentDirectory) {
                 status = FTPSUtil.createParentDirectory(connection, targetFolder);
             } else {
-                FTPSUtil.requiredCommand(connection);
                 status = connection.ftpsClient().makeDirectory(targetFolder);
             }
 
@@ -419,8 +418,8 @@ public class FTPSOperations {
                           @Optional(defaultValue = "true")
                           @Placement(tab = ADVANCED_TAB) boolean createParentDirectory,
                           @Optional(defaultValue = "#[attributes.timestamp]")
-                              @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
-                                      LocalDateTime timestamp)
+                          @Summary("Only useful when the file was read using 'Create Intermediate file' flag on")
+                                  LocalDateTime timestamp)
             throws ConnectionException, FileNotFoundException, RuntimeException {
 
         if (_logger.isDebugEnabled()) _logger.debug("Rename operation starting...");
@@ -445,28 +444,28 @@ public class FTPSOperations {
         if (_logger.isDebugEnabled()) _logger.debug("Renaming the source path {} to {}", sourcePath, targetPath);
         boolean status = false;
         try {
-            FTPSUtil.requiredCommand(connection);
+
             if (isFileRename) {
                 String fName = FTPSUtil.makeIntermediateFileName(timestamp, sourceFileName);
                 String intermediatePath = FTPSUtil.trimPath(sourceFolder, fName);
 
                 if (connection.ftpsClient().getModificationTime(sourcePath) == null) {
-                    if(connection.ftpsClient().getModificationTime(intermediatePath) == null) {
+                    if (connection.ftpsClient().getModificationTime(intermediatePath) == null) {
                         throw new FileNotFoundException("The file does not exists " + sourcePath);
                     } else {
                         sourcePath = intermediatePath;
                     }
                 }
             } else {
+
                 if (!connection.ftpsClient().changeWorkingDirectory(sourcePath))
                     throw new IllegalStateException("Folder does not exists");
             }
 
             if (createParentDirectory) {
-                FTPSUtil.requiredCommand(connection);
                 FTPSUtil.createParentDirectory(connection, targetFolder);
             }
-            FTPSUtil.requiredCommand(connection);
+
             status = connection.ftpsClient().rename(sourcePath, targetPath);
 
             if (status == false) throw new Exception("Unable to rename");

@@ -1,24 +1,18 @@
 package org.neointegrations.ftps.internal.util;
 
-import org.apache.commons.net.ftp.FTP;
-import org.apache.commons.net.ftp.FTPConnectionClosedException;
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPReply;
 import org.mule.extension.file.common.api.matcher.FileMatcher;
 import org.mule.extension.file.common.api.matcher.NullFilePayloadPredicate;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.internal.FTPSConnection;
 import org.neointegrations.ftps.api.FTPSFileAttributes;
-import org.neointegrations.ftps.internal.client.MuleFTPSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aop.scope.ScopedObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.function.Predicate;
 
 public class FTPSUtil {
@@ -42,7 +36,6 @@ public class FTPSUtil {
     public static void deleteRecursive(String targetFolder, FTPSConnection connection)
             throws IOException, ConnectionException {
 
-        requiredCommand(connection);
         FTPFile[] folders = connection.ftpsClient().listDirectories(targetFolder);
         FTPFile[] files = connection.ftpsClient().listFiles(targetFolder);
 
@@ -65,24 +58,10 @@ public class FTPSUtil {
         }
     }
 
-    public static void requiredCommand(FTPSConnection connection) throws ConnectionException {
-        try {
-            connection.ftpsClient().execPROT("P");
-            connection.ftpsClient().setFileType(FTP.BINARY_FILE_TYPE);
-            connection.ftpsClient().setBufferSize(connection.getProvider().bufferSizeInBytes);
-            connection.ftpsClient().enterLocalPassiveMode();
-        } catch (FTPConnectionClosedException exp) {
-            connection.reconnect();
-        } catch (IOException exp) {
-            throw new ConnectionException(exp);
-        }
-
-    }
-
     public static boolean sizeCheck(FTPSConnection connection,
                                     String path, long timeBetweenSizeCheckInSeconds)
             throws IOException, InterruptedException, ConnectionException {
-        FTPSUtil.requiredCommand(connection);
+        connection.ftpsClient().requiredCommand();
         connection.ftpsClient().sendCommand("SIZE", path);
 
         String reply = connection.ftpsClient().getReplyString();
@@ -91,7 +70,7 @@ public class FTPSUtil {
         if (s != null && s.length > 0) start = Long.valueOf(s[s.length - 1].trim());
         Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
 
-        FTPSUtil.requiredCommand(connection);
+        connection.ftpsClient().requiredCommand();
         connection.ftpsClient().sendCommand("SIZE", path);
 
         reply = connection.ftpsClient().getReplyString();
@@ -112,53 +91,6 @@ public class FTPSUtil {
         }
     }
 
-    public static void logoutQuietly(final MuleFTPSClient client) {
-        try {
-            if (client != null && client.isAvailable()) {
-                client.logout();
-            }
-        } catch (Exception e) {
-            _logger.warn("An exception occurred while logout {}", e.getMessage(), e);
-        }
-    }
-
-    public static void disconnectQuietly(final MuleFTPSClient client) {
-        try {
-            if (client != null && client.isConnected()) {
-                client.disconnect();
-            }
-        } catch (Exception e) {
-            _logger.warn("An exception occurred while disconnecting {}", e.getMessage(), e);
-        }
-    }
-
-    public static FTPFile[] listFiles(FTPSConnection connection, String sourceFolder)
-            throws IOException, ConnectionException {
-        FTPFile[] list = null;
-        try {
-            FTPSUtil.requiredCommand(connection);
-            if (_logger.isDebugEnabled()) _logger.debug("Listing: {}", sourceFolder);
-            list = connection.ftpsClient().listFiles(sourceFolder);
-        } catch (IOException io) {
-            _logger.error("Exception while listening folder. {}", io.getMessage());
-            if ("Invalid SSL Session".equals(io.getMessage())) {
-                if (connection.ftpsClient().isConnected()) {
-                    connection.ftpsClient().disconnect();
-                }
-                connection.reconnect();
-                list = connection.ftpsClient().listFiles(sourceFolder);
-            } else {
-                throw io;
-            }
-        }
-        int reply = connection.ftpsClient().getReplyCode();
-        if (_logger.isDebugEnabled()) _logger.debug("ReplyCode: {}", reply);
-        if (FTPReply.isNegativePermanent(connection.ftpsClient().getReplyCode())) {
-            _logger.error("File / Folder does not exists. ReplyCode={}, Folder={}", reply, sourceFolder);
-            throw new RuntimeException("File / Folder does not exists");
-        }
-        return list;
-    }
 
     public static boolean createParentDirectory(final FTPSConnection connection, String dir)
             throws IOException, ConnectionException {
@@ -182,9 +114,7 @@ public class FTPSUtil {
             sb.append(dirs[idx]).append(File.separator);
             String cd = sb.substring(0, sb.length() - 1);
             if (!connection.ftpsClient().changeWorkingDirectory(cd)) {
-                //FTPSUtil.requiredCommand(connection);
-                if (connection.ftpsClient().makeDirectory(cd) == false)
-                    return false;
+                if (connection.ftpsClient().makeDirectory(cd) == false) return false;
             }
         }
         return true;
@@ -211,11 +141,4 @@ public class FTPSUtil {
         }
     }
 
-    public static void completePendingCommand(FTPSConnection connection) {
-        try {
-            if(connection != null) connection.ftpsClient().completePendingCommand();
-        } catch (Exception e) {
-            _logger.warn("An exception occurred while calling completePendingCommand() {}", e.getMessage(), e);
-        }
-    }
 }

@@ -1,34 +1,25 @@
 package org.neointegrations.ftps.internal.client;
 
-import org.apache.commons.net.PrintCommandListener;
-import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPReply;
-import org.apache.commons.net.ftp.FTPSClient;
 import org.mule.runtime.api.connection.ConnectionException;
-import org.neointegrations.ftps.internal.FTPSConnection;
-import org.neointegrations.ftps.internal.util.FTPSUtil;
+import org.neointegrations.ftps.internal.InvalidSSLSessionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
-import java.security.*;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Locale;
 
-public class MuleFTPSClient extends FTPSClient {
+public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
 
-    private static final Logger _logger = LoggerFactory.getLogger(MuleFTPSClient.class);
+    private static final Logger _logger = LoggerFactory.getLogger(FTPSClient.class);
     private boolean _sessionReuse = false;
 
-    public MuleFTPSClient(final boolean isImplicit,
-                          final SSLContext sslContext,
-                          final boolean sessionReuse) throws ConnectionException {
+    protected FTPSClient(final boolean isImplicit,
+                      final SSLContext sslContext,
+                      final boolean sessionReuse) throws ConnectionException {
 
         super(isImplicit, sslContext);
         this._sessionReuse = sessionReuse;
@@ -65,8 +56,20 @@ public class MuleFTPSClient extends FTPSClient {
                     throw new IOException(e);
                 }
             } else {
-                throw new IOException("Invalid SSL Session");
+                throw new InvalidSSLSessionException("Invalid SSL Session");
             }
         }
+    }
+
+
+    @Override
+    public void disconnect() throws IOException {
+        super.disconnect();
+    }
+
+    @Override
+    public boolean logout() throws IOException {
+        boolean status = super.logout();
+        return status;
     }
 }

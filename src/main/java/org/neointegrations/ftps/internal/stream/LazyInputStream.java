@@ -55,9 +55,9 @@ public class LazyInputStream extends InputStream {
             // CLose the stream
             if (_inputStream != null) {
                 FTPSUtil.close(this._inputStream);
-                FTPSUtil.completePendingCommand(this._connection);
+                _inputStream = null;
+                _connection.ftpsClient().completePendingCommand();
             }
-
             // Delete the file, if
             // - the transfer has been finished successfully,
             // - the _deleteTheFileAfterRead == true and
@@ -65,16 +65,17 @@ public class LazyInputStream extends InputStream {
             if ((_started == true && _finished == true) &&
                     _deleteTheFileAfterRead == true &&
                     _connection != null) {
+
                 // Reconnect if connection was dropped
                 if (!_connection.isConnected()) {
                     _connection.reconnect();
-                } else {
-                    FTPSUtil.requiredCommand(_connection);
                 }
+
                 String path = FTPSUtil.trimPath(_directory, this._fileName);
                 _connection.ftpsClient().deleteFile(path);
             } else if ((_started == true && _finished == false) &&
-                    _fileName != _originalFileName) {
+                    _fileName != _originalFileName &&
+                    _connection != null) {
                 // Rename to the original file name if
                 // - the file was renamed to intermediate name
                 // - the transfer was started but did not finished
@@ -83,10 +84,22 @@ public class LazyInputStream extends InputStream {
         } catch (Exception e) {
             _logger.error("Something wrong happened {}", e.getMessage(), e);
         } finally {
-            // reset everything
-            if (_connection != null) FTPSUtil.close(_connection);
-            _provider = null;
-            _connection = null;
+            if(_logger.isDebugEnabled()) {
+                _logger.debug("_started={} _finished={} _deleteTheFileAfterRead={} _connection={}", _started, _finished, _deleteTheFileAfterRead, _connection);
+                _logger.debug("_fileName={} _originalFileName={} ", _fileName, _originalFileName);
+            }
+            if(_inputStream != null) {
+                FTPSUtil.close(_inputStream);
+                _inputStream = null;
+            }
+
+            // close connection
+            if (_connection != null) {
+                _connection.close();
+                _connection = null;
+                _provider = null;
+            }
+
         }
     }
 
@@ -101,7 +114,10 @@ public class LazyInputStream extends InputStream {
         if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read();
         if (_started == false && count >= 0) _started = true;
-        else if (count == -1) _finished = true;
+        else if (count == -1) {
+            _finished = true;
+            this.close();
+        }
         return count;
     }
 
@@ -111,7 +127,10 @@ public class LazyInputStream extends InputStream {
         if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read();
         if (_started == false && count >= 0) _started = true;
-        else if (count == -1) _finished = true;
+        else if (count == -1) {
+            _finished = true;
+            this.close();
+        }
         return count;
     }
 
@@ -120,7 +139,10 @@ public class LazyInputStream extends InputStream {
         if (_inputStream == null) lazyLoadStream();
         int count = this._inputStream.read(b, off, len);
         if (_started == false && count >= 0) _started = true;
-        else if (count == -1) _finished = true;
+        else if (count == -1) {
+            _finished = true;
+            this.close();
+        }
         return count;
     }
 
@@ -148,20 +170,19 @@ public class LazyInputStream extends InputStream {
         return _inputStream.markSupported();
     }
 
-    private void lazyLoadStream() {
+    private synchronized void lazyLoadStream() {
         if (_inputStream == null) {
             _inputStream = inputStream();
         }
     }
 
     private InputStream inputStream() {
+        _logger.info("Opening inputStream");
         try {
             _connection = _provider.connect();
-            _logger.info("Opening inputStream");
             if (_createIntermediateFile) {
                 renameToIntermediateOrOriginal(true);
             }
-            FTPSUtil.requiredCommand(_connection);
             return _connection.ftpsClient().retrieveFileStream(FTPSUtil.trimPath(_directory, _fileName));
         } catch (FileNotFoundException e) {
             _logger.error("File not found {}", _fileName, e);
@@ -182,7 +203,6 @@ public class LazyInputStream extends InputStream {
             intermediateFileName = this._originalFileName;
         }
         _logger.info("Rename to {}", intermediateFileName);
-        FTPSUtil.requiredCommand(_connection);
         _connection.ftpsClient().rename(FTPSUtil.trimPath(_directory, _fileName),
                 FTPSUtil.trimPath(_directory, intermediateFileName));
 

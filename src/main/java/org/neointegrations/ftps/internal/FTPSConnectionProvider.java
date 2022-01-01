@@ -10,8 +10,7 @@ import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 import org.mule.runtime.extension.api.annotation.param.display.Password;
 import org.mule.runtime.extension.api.annotation.param.display.Summary;
-import org.neointegrations.ftps.internal.client.MuleFTPSClient;
-import org.neointegrations.ftps.internal.util.FTPSUtil;
+import org.neointegrations.ftps.internal.client.FTPSClientWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +19,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -90,34 +88,43 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
         // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
         // to share SSL session with the data connection
         System.setProperty("jdk.tls.useExtendedMasterSecret", "false");
-        _sslContext = init();
+        _sslContext = sslContext();
 
     }
 
     @Override
     public FTPSConnection connect() throws ConnectionException {
-
         if (_logger.isDebugEnabled()) _logger.debug("Connection starting...");
-        final MuleFTPSClient _client = new MuleFTPSClient(false, _sslContext,
-                sslSessionReuse);
-        connectionInit(_client);
-        return new FTPSConnection(this, _client);
+        final FTPSClientWrapper client = new FTPSClientWrapper(
+                false,
+                _sslContext,
+                sslSessionReuse,
+                debugFtpCommand,
+                remoteVerificationEnable,
+                serverTimeZone,
+                user,
+                password,
+                host,
+                port,
+                timeout,
+                socketTimeout,
+                bufferSizeInBytes);
+
+        return new FTPSConnection(this, client);
     }
 
     @Override
     public void disconnect(FTPSConnection connection) {
         if (_logger.isDebugEnabled()) _logger.debug("Disconnecting...");
         if (connection == null || connection.ftpsClient() == null) return;
-        FTPSUtil.logoutQuietly(connection.ftpsClient());
-        if (_logger.isDebugEnabled()) _logger.debug("After connection.ftpsClient().logout()");
-        FTPSUtil.disconnectQuietly(connection.ftpsClient());
+        connection.ftpsClient().close();
         if (_logger.isDebugEnabled()) _logger.debug("Disconnected ");
     }
 
     @Override
     public ConnectionValidationResult validate(final FTPSConnection connection) {
         if (_logger.isDebugEnabled()) _logger.debug("Validating connection...");
-        if (connection.isConnected()) {
+        if (connection.ftpsClient().isConnected()) {
             return ConnectionValidationResult.success();
         } else {
             return ConnectionValidationResult.failure("Connection is closed",
@@ -127,12 +134,11 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
 
     public void reconnect(final FTPSConnection connection) throws IOException, ConnectionException {
         if (_logger.isDebugEnabled()) _logger.debug("Connection re-starting...");
-        if (connection.isConnected()) this.disconnect(connection);
-        connectionInit(connection.ftpsClient());
+        connection.ftpsClient().reconnect();
         if (_logger.isDebugEnabled()) _logger.debug("Connection restarted");
     }
 
-    private SSLContext init() throws ConnectionException {
+    private SSLContext sslContext() throws ConnectionException {
         if (_logger.isDebugEnabled()) _logger.debug("Creating trust manager...");
         SSLContext sslContext = null;
         try {
@@ -204,53 +210,5 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
 
         if (_logger.isDebugEnabled()) _logger.debug("Trust Manager created");
         return sslContext;
-    }
-
-    private void connectionInit(final MuleFTPSClient _client) throws ConnectionException{
-        try {
-            if (debugFtpCommand) {
-                _client.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out),
-                        true));
-            }
-            _client.setRemoteVerificationEnabled(remoteVerificationEnable);
-
-            final FTPClientConfig config = new FTPClientConfig();
-            config.setServerTimeZoneId(serverTimeZone);
-            _client.configure(config);
-
-            // Timeout settings
-            _client.setDefaultTimeout(timeout);
-            _client.setConnectTimeout(timeout);
-
-            _client.connect(host, port);
-
-            _client.setSoTimeout(socketTimeout);
-            _client.login(user, password);
-            _client.enterLocalPassiveMode();
-
-            if (_logger.isDebugEnabled()) _logger.debug("Connected to {}", host);
-            if (_logger.isDebugEnabled()) _logger.debug("Reply: {}", _client.getReplyString());
-            int reply = _client.getReplyCode();
-            if (!FTPReply.isPositiveCompletion(reply)) {
-                _client.disconnect();
-                _logger.error("FTP server refused connection with reply {}", reply);
-                throw new ConnectionException("FTP server refused connection");
-            }
-            _client.execPROT("P");
-            _client.setFileType(FTP.BINARY_FILE_TYPE);
-            _client.setBufferSize(bufferSizeInBytes);
-            _client.enterLocalPassiveMode();
-            if (_logger.isDebugEnabled()) _logger.debug("Connection started");
-        } catch (IOException e) {
-            _logger.error("FTPS server refused connection", e);
-            FTPSUtil.logoutQuietly(_client);
-            try {
-                _client.disconnect();
-            } catch (Exception exp) {
-                throw new RuntimeException(exp);
-            }
-            throw new ConnectionException(e);
-        }
-
     }
 }
