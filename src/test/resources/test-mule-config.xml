@@ -8,7 +8,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
 
     <ftps:config name="Ftps_Config" doc:name="Ftps Config" doc:id="75bcfcf1-20dc-485a-bd1a-9ebe5780d72d" >
-        <ftps:connection user="${USER_NAME}" password="${PASSWORD}" host="${IP_ADDRESS}" port="23" timeout="60000" socketTimeout="120000" bufferSizeInBytes="#[1024*1024]" enableCertificateValidation="false"/>
+        <ftps:connection user="${USER_NAME}" password="${PASSWORD}" host="${IP_ADDRESS}" port="23" timeout="60000" socketTimeout="120000" bufferSizeInBytes="#[1024*8]" enableCertificateValidation="true" trustStorePath="truststore.jks" trustStorePassword="123456" keyStorePassword="123456" keyPassword="123456" keyAlias="test" keyStorePath="keystore.jks" />
     </ftps:config>
     <flow name="destroy-flow" doc:id="7908ada5-b139-45f7-bed2-9cee30558b7f" >
         <try doc:name="Try" doc:id="2a8fe5cf-baf5-44ca-a3cb-0ded720e4ad8" >

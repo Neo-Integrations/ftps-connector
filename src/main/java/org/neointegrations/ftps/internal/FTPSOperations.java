@@ -161,7 +161,7 @@ public class FTPSOperations {
                 throw new FileNotFoundException("The file does not exists " + path);
             }
 
-            if (sizeCheckEnabled && !FTPSUtil.sizeCheck(connection, path, timeBetweenSizeCheckInSeconds)) {
+            if (sizeCheckEnabled && !connection.ftpsClient().sizeCheck(path, timeBetweenSizeCheckInSeconds)) {
                 throw new IllegalStateException("The file still being written. Try after sometime again...");
             }
 
@@ -221,7 +221,7 @@ public class FTPSOperations {
                 }
             }
             if (createParentDirectory) {
-                FTPSUtil.createParentDirectory(connection, targetFolder);
+                connection.ftpsClient().createParentDirectory(targetFolder);
             }
 
             boolean status = false;
@@ -340,7 +340,7 @@ public class FTPSOperations {
                 else throw new FileNotFoundException("Directory does not exists " + targetFolder);
             }
 
-            if (recursive) FTPSUtil.deleteRecursive(targetFolder, connection);
+            if (recursive) connection.ftpsClient().deleteRecursive(targetFolder);
 
             if (connection.ftpsClient().removeDirectory(targetFolder))
                 _logger.info("Deleted the folder successfully");
@@ -386,7 +386,7 @@ public class FTPSOperations {
             }
 
             if (createParentDirectory) {
-                status = FTPSUtil.createParentDirectory(connection, targetFolder);
+                status = connection.ftpsClient().createParentDirectory(targetFolder);
             } else {
                 status = connection.ftpsClient().makeDirectory(targetFolder);
             }
@@ -463,7 +463,7 @@ public class FTPSOperations {
             }
 
             if (createParentDirectory) {
-                FTPSUtil.createParentDirectory(connection, targetFolder);
+                connection.ftpsClient().createParentDirectory(targetFolder);
             }
 
             status = connection.ftpsClient().rename(sourcePath, targetPath);

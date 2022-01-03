@@ -8,7 +8,8 @@ import org.mule.runtime.api.connection.PoolingConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.display.*;
-import org.neointegrations.ftps.internal.client.FTPSClientWrapper;
+import org.neointegrations.ftps.internal.client.FTPSClientProxy;
+import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,8 +17,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509ExtendedKeyManager;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
@@ -162,7 +161,7 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
             }
         }
 
-        final FTPSClientWrapper client = new FTPSClientWrapper(
+        final FTPSClientProxy client = new FTPSClientProxy(
                 false,
                 _sslContext,
                 sslSessionReuse,
@@ -219,7 +218,8 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
                 throw new IllegalArgumentException("Key Store location, its password, alias and key password must be provided");
             }
             if (_logger.isDebugEnabled()) _logger.debug("**** Reading keystore {}", keyStorePath);
-            try (InputStream stream = Files.newInputStream(Paths.get(this.keyStorePath))) {
+            try(InputStream stream = FTPSUtil.getStream(this.keyStorePath)) {
+            //try (InputStream stream = Files.newInputStream(Paths.get(this.keyStorePath))) {
                 KeyStore keyStore = KeyStore.getInstance("JKS");
                 keyStore.load(stream, keyStorePassword.toCharArray());
                 Map<String, char[]> map = new HashMap();
@@ -240,7 +240,6 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
                 throw new ConnectionException(e);
             }
         }
-
         if(this.enableCertificateValidation == true) {
             if (_logger.isDebugEnabled()) _logger.debug("**** With JDK and OS default trust Manager");
             builder.withDefaultTrustMaterial();
@@ -255,7 +254,7 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
                 throw new IllegalArgumentException("Trust Store location and its password must be provided");
 
             if (_logger.isDebugEnabled()) _logger.debug("**** Reading TrustStore. {}", trustStorePath);
-            builder.withTrustMaterial(Paths.get(this.trustStorePath), this.trustStorePassword.toCharArray());
+            builder.withTrustMaterial(FTPSUtil.getStream(this.trustStorePath), this.trustStorePassword.toCharArray());
         }
 
         return builder.build().getSslContext();

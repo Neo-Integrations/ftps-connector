@@ -2,7 +2,7 @@ package org.neointegrations.ftps.internal;
 
 
 import org.mule.runtime.api.connection.ConnectionException;
-import org.neointegrations.ftps.internal.client.FTPSClientWrapper;
+import org.neointegrations.ftps.internal.client.FTPSClientProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,11 +13,11 @@ public final class FTPSConnection implements AutoCloseable {
 
     private static final Logger _logger = LoggerFactory.getLogger(FTPSConnection.class);
 
-    private FTPSClientWrapper _client = null;
+    private FTPSClientProxy _client = null;
     private FTPSConnectionProvider _provider = null;
 
     public FTPSConnection(final FTPSConnectionProvider provider,
-                          final FTPSClientWrapper client) {
+                          final FTPSClientProxy client) {
         this._provider = provider;
         this._client = client;
     }
@@ -33,11 +33,11 @@ public final class FTPSConnection implements AutoCloseable {
         if(_provider != null) _provider = null;
     }
 
-    public FTPSClientWrapper ftpsClient() {
+    public FTPSClientProxy ftpsClient() {
         return this._client;
     }
 
-    public void setClient(FTPSClientWrapper client) {
+    public void setClient(FTPSClientProxy client) {
         this._client = client;
     }
 
