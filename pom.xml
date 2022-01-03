@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neointegrations</groupId>
     <artifactId>ftps-connector</artifactId>
-    <version>1.0.7-SNAPSHOT</version>
+    <version>1.0.76-SNAPSHOT</version>
     <packaging>mule-extension</packaging>
     <name>FTPS Extension</name>
 
@@ -80,6 +80,12 @@
             <artifactId>mule-module-file-extension-common</artifactId>
             <version>1.3.6</version>
             <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.hakky54</groupId>
+            <artifactId>sslcontext-kickstart</artifactId>
+            <version>7.2.0</version>
         </dependency>
 
         <!-- Only for Test -->

@@ -60,16 +60,4 @@ public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
             }
         }
     }
-
-
-    @Override
-    public void disconnect() throws IOException {
-        super.disconnect();
-    }
-
-    @Override
-    public boolean logout() throws IOException {
-        boolean status = super.logout();
-        return status;
-    }
 }

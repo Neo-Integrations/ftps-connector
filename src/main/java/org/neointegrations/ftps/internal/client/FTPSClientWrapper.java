@@ -42,9 +42,9 @@ public class FTPSClientWrapper implements AutoCloseable {
                       final int timeout,
                       final int socketTimeout,
                       final int bufferSizeInBytes) throws ConnectionException {
-        this._isImplicit = isImplicit;
-        this._sslContext = sslContext;
-        this._sessionReuse = sessionReuse;
+       this._isImplicit = isImplicit;
+       this._sslContext = sslContext;
+       this._sessionReuse = sessionReuse;
        this._debugFtpCommand = debugFtpCommand;
        this._remoteVerificationEnable = remoteVerificationEnable;
        this._serverTimeZone = serverTimeZone;
