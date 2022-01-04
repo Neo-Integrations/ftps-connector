@@ -3,7 +3,6 @@ package org.neointegrations.ftps.internal.client;
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.*;
 import org.mule.runtime.api.connection.ConnectionException;
-import org.neointegrations.ftps.internal.InvalidSSLSessionException;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

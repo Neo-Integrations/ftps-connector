@@ -153,8 +153,8 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
     public FTPSConnection connect() throws ConnectionException {
         if (_logger.isDebugEnabled()) _logger.debug("Connection starting...");
         if(_sslContext == null) {
+            _lock.lock();
             try {
-                _lock.lock();
                 if(_sslContext == null) _sslContext = this.sslContext();
             } finally {
                 _lock.unlock();

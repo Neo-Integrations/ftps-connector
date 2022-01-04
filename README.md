@@ -85,10 +85,12 @@ The main reason to create this connector is to provide a community alternative o
     doc:id="75bcfcf1-20dc-485a-bd1a-9ebe5780d72d">
     <ftps:connection user="${USER_NAME}" password="${PASSWORD}"
         host="163.172.147.233" port="23" timeout="60000"
-        socketTimeout="120000" bufferSizeInBytes="#[1024*1024]" 
-                     remoteVerificationEnable="true" debugFtpCommand="false"
+        socketTimeout="120000" bufferSizeInBytes="#[1024*8]"
+                     enableCertificateValidation="true" debugFtpCommand="false"
                      sslSessionReuse="true" serverTimeZone="Europe/London"
-                     tlsV12Only="true"/>
+                     tlsV12Only="true" trustStorePath="truststore.jks" 
+                     trustStorePassword="123456" keyStorePassword="123456" 
+                     keyPassword="123456" keyAlias="test" keyStorePath="keystore.jks"/>
 </ftps:config>
 ```
 Where
@@ -99,11 +101,17 @@ Where
 - `serverTimeZone:` Set the FTPS server's time zone. Default is `Europe/London`.
 - `timeout:` Connection timeout in `milliseconds`. Make sure to give ample time for the client and server to setup a TLS connection. 60000 (60 seconds) is recommended.
 - `socketTimeout:`  Socket read or write timeout in `milliseconds`. The connector has been designed to reconnect when the connection become stale, but I would still advise to keep the timeout not very large and not very small. I would suggest no bigger than 1 hour timeout and no lesser than 5 minutes
-- `remoteVerificationEnable:` Set it to `false` to disable certificate validation. It is useful for development testing where server presents self-signed certificate. It is strongly recommanded to set it to `true` for production environment
+- `enableCertificateValidation:` Set it to `false` to disable certificate validation. It is useful for development testing where server presents self-signed certificate. It is strongly recommanded to set it to `true` for production environment
 - `debugFtpCommand:` Always keep the default `false`. Setting the value `true` will print the FTP commands exchange between the client and the server.
-- `tlsV12Only`: For better security set it to `true` which will enforce `TLSv1.2`. Please make sure that the FTPS server does support `TLSv1.2`, otherwise set this field to `false`. When set to false, client and server negotiate the TLS version.
+- `tlsV12Only`: For better security set it to `true` which will enforce `TLSv1.2`. Please make sure that the FTPS server does support `TLSv1.2`, otherwise set this field to `false`. When set to false, client and server negotiate the TLS version. TLSv1.3 support can be added latter
+- `bufferSizeInBytes`: Default buffer size is 8KB. You can tune the socket buffer size using this parameter. 
+- `trustStorePath` and `trustStorePassword`: These two property lets you inject an external truststore. You can provide an absolute path of the truststore file or it can be placed in the classpath. Both the property must be supplied to be able to add the truststore. In its current implementation, it only supports 'JKS' keystore. I will add support for `PKCS#12` and `JCEKS` keystore.
+- `keyStorePath`, `keyStorePassword`, `keyPassword`, and `keyAlias`: These 4 properties lets you inject an external keystore. This will be useful to enable `mTLS`(2-way TLS) with the FTPS server. You can provide an absolute path of the keystore file or it can be placed in the classpath. All the 4 properties must be supplied to be able to add the keystore. In its current implementation, it only supports 'JKS' keystore. I will add support for `PKCS#12` and `JCEKS` keystore.
+- 
+![Config: General Section](./images/config-general.png)
+![Config: SSL Context Section](./images/config-ssl.png)
+![Config: Advanced Section](./images/config-advance.png)
 
-![Listener flow](./images/config.png)
 
 #### As a listener
 This is the most standard operation, use the FTPS connector to scan a folder for any new files or update to an existing file.

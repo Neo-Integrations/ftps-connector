@@ -20,13 +20,14 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LazyInputStream extends InputStream {
 
     private static final Logger _logger = LoggerFactory.getLogger(LazyInputStream.class);
+    private final ReentrantLock _lock = new ReentrantLock();
     private InputStream _inputStream = null;
     private FTPSConnection _connection = null;
     private String _fileName;
     private final String _originalFileName;
     private final String _directory;
     private final boolean _deleteTheFileAfterRead;
-    private FTPSConnectionProvider _provider;
+    private final FTPSConnectionProvider _provider;
     private boolean _finished = false;
     private boolean _started = false;
     private final boolean _createIntermediateFile;
@@ -97,7 +98,6 @@ public class LazyInputStream extends InputStream {
             if (_connection != null) {
                 _connection.close();
                 _connection = null;
-                _provider = null;
             }
 
         }
@@ -171,8 +171,13 @@ public class LazyInputStream extends InputStream {
     }
 
     private synchronized void lazyLoadStream() {
-        if (_inputStream == null) {
-            _inputStream = inputStream();
+        if(this._inputStream != null) return;
+        _lock.lock();
+        try {
+            if(this._inputStream != null) return;
+            this._inputStream = inputStream();
+        } finally {
+            _lock.unlock();
         }
     }
 

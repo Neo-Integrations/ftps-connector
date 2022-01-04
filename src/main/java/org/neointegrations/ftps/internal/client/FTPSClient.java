@@ -1,7 +1,7 @@
 package org.neointegrations.ftps.internal.client;
 
 import org.mule.runtime.api.connection.ConnectionException;
-import org.neointegrations.ftps.internal.InvalidSSLSessionException;
+import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +36,7 @@ public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
         if (socket instanceof SSLSocket) {
             // Control socket is SSL
             final SSLSession session = ((SSLSocket) _socket_).getSession();
+            if(_logger.isDebugEnabled()) _logger.debug("sessionId = {}", FTPSUtil.toHexString(session.getId()));
             if (session.isValid()) {
                 final SSLSessionContext context = session.getSessionContext();
                 try {
@@ -56,6 +57,12 @@ public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
                     throw new IOException(e);
                 }
             } else {
+                try {
+                    final Field invalidated = session.getClass().getDeclaredField("invalidated");
+                    invalidated.setAccessible(true);
+                    final boolean invalidatedValue = (boolean) invalidated.get(session);
+                    _logger.error("Invalid SSL Session: sessionId={}, invalidated={}", FTPSUtil.toHexString(session.getId()), invalidatedValue);
+                }catch(Exception exp) {}
                 throw new InvalidSSLSessionException("Invalid SSL Session");
             }
         }

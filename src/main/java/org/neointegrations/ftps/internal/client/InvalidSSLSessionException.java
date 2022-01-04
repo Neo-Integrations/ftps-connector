@@ -1,4 +1,4 @@
-package org.neointegrations.ftps.internal;
+package org.neointegrations.ftps.internal.client;
 
 import java.io.IOException;
 

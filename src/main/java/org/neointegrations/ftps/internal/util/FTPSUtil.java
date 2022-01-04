@@ -79,4 +79,30 @@ public class FTPSUtil {
         return is;
     }
 
+    private static final char[] hexDigits = "0123456789ABCDEF".toCharArray();
+    public static String toHexString(byte[] var0) {
+        if (var0 != null && var0.length != 0) {
+            StringBuilder var1 = new StringBuilder(var0.length * 3);
+            boolean var2 = true;
+            byte[] var3 = var0;
+            int var4 = var0.length;
+
+            for(int var5 = 0; var5 < var4; ++var5) {
+                byte var6 = var3[var5];
+                if (var2) {
+                    var2 = false;
+                } else {
+                    var1.append(' ');
+                }
+
+                var1.append(hexDigits[var6 >> 4 & 15]);
+                var1.append(hexDigits[var6 & 15]);
+            }
+
+            return var1.toString();
+        } else {
+            return "";
+        }
+    }
+
 }
