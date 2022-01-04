@@ -1,26 +1,17 @@
 package org.neointegrations.ftps.internal;
 
-import nl.altindag.ssl.SSLFactory;
-import nl.altindag.ssl.util.KeyManagerUtils;
+import com.google.common.base.Strings;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
 import org.mule.runtime.api.connection.PoolingConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.display.*;
-import org.neointegrations.ftps.internal.client.FTPSClientProxy;
-import org.neointegrations.ftps.internal.util.FTPSUtil;
+import org.neointegrations.ftps.internal.client.FTPClientProxyFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.X509ExtendedKeyManager;
 import java.io.IOException;
-import java.io.InputStream;
-import java.security.*;
-import java.security.cert.CertificateException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.mule.runtime.api.meta.model.display.PathModel.Location.EXTERNAL;
@@ -138,8 +129,6 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
     @Parameter
     private String keyAlias;
 
-    private SSLContext _sslContext = null;
-
     public FTPSConnectionProvider() throws ConnectionException {
         super();
         // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
@@ -151,32 +140,31 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
 
     @Override
     public FTPSConnection connect() throws ConnectionException {
-        if (_logger.isDebugEnabled()) _logger.debug("Connection starting...");
-        if(_sslContext == null) {
-            _lock.lock();
-            try {
-                if(_sslContext == null) _sslContext = this.sslContext();
-            } finally {
-                _lock.unlock();
-            }
+        FTPClientProxyFactory.Builder builder = FTPClientProxyFactory.builder();
+
+        builder.withImplicit(false)
+                .withSessionReuse(sslSessionReuse)
+                .withpPintFtpCommand(debugFtpCommand)
+                .withEnableCertificateValidation(enableCertificateValidation)
+                .withServerTimeZone(serverTimeZone)
+                .withUsername(user)
+                .withPassword(password)
+                .withHost(host)
+                .withPort(port)
+                .withTimeout(timeout)
+                .withSocketTimeout(socketTimeout)
+                .withBufferSizeInBytes(bufferSizeInBytes)
+                .withTLSV12(tlsV12Only);
+
+        if(!Strings.isNullOrEmpty(keyStorePath)) {
+            builder.withKeyStore(keyStorePath, keyStorePassword, keyPassword, keyAlias);
         }
 
-        final FTPSClientProxy client = new FTPSClientProxy(
-                false,
-                _sslContext,
-                sslSessionReuse,
-                debugFtpCommand,
-                enableCertificateValidation,
-                serverTimeZone,
-                user,
-                password,
-                host,
-                port,
-                timeout,
-                socketTimeout,
-                bufferSizeInBytes);
+        if(!Strings.isNullOrEmpty(trustStorePath)) {
+            builder.withTrustStore(trustStorePath, trustStorePassword);
+        }
 
-        return new FTPSConnection(this, client);
+        return new FTPSConnection(this, builder.build());
     }
 
     @Override
@@ -202,62 +190,6 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
         if (_logger.isDebugEnabled()) _logger.debug("Connection re-starting...");
         connection.ftpsClient().reconnect();
         if (_logger.isDebugEnabled()) _logger.debug("Connection restarted");
-    }
-
-    private SSLContext sslContext() throws ConnectionException {
-        SSLFactory.Builder builder = SSLFactory.builder();
-        builder.withSecureRandom(new SecureRandom());
-
-        if(this.tlsV12Only) {
-            if (_logger.isDebugEnabled()) _logger.debug("**** TLS Protocols version: TLSv1.2");
-            builder.withProtocols("TLSv1.2");
-        }
-
-        if(keyStorePath != null) {
-            if(keyPassword == null || keyStorePassword == null || keyAlias == null) {
-                throw new IllegalArgumentException("Key Store location, its password, alias and key password must be provided");
-            }
-            if (_logger.isDebugEnabled()) _logger.debug("**** Reading keystore {}", keyStorePath);
-            try(InputStream stream = FTPSUtil.getStream(this.keyStorePath)) {
-            //try (InputStream stream = Files.newInputStream(Paths.get(this.keyStorePath))) {
-                KeyStore keyStore = KeyStore.getInstance("JKS");
-                keyStore.load(stream, keyStorePassword.toCharArray());
-                Map<String, char[]> map = new HashMap();
-                map.put(keyAlias, keyPassword.toCharArray());
-                X509ExtendedKeyManager keyManager = KeyManagerUtils.createKeyManager(keyStore, map);
-                builder.withIdentityMaterial(keyManager);
-            } catch (KeyStoreException e) {
-                if (_logger.isDebugEnabled()) _logger.debug("**** Invalid key store: {}", e.getMessage(), e);
-                throw new ConnectionException(e);
-            } catch (IOException e) {
-                if (_logger.isDebugEnabled()) _logger.debug("**** Unable to read keystore: {}", e.getMessage(), e);
-                throw new ConnectionException(e);
-            } catch (CertificateException e) {
-                if (_logger.isDebugEnabled()) _logger.debug("**** Certificate issue: {}", e.getMessage(), e);
-                throw new ConnectionException(e);
-            } catch (NoSuchAlgorithmException e) {
-                if (_logger.isDebugEnabled()) _logger.debug("**** Invalid Algorithm: {}", e.getMessage(), e);
-                throw new ConnectionException(e);
-            }
-        }
-        if(this.enableCertificateValidation == true) {
-            if (_logger.isDebugEnabled()) _logger.debug("**** With JDK and OS default trust Manager");
-            builder.withDefaultTrustMaterial();
-            builder.withSystemTrustMaterial();
-        } else {
-            if (_logger.isDebugEnabled()) _logger.debug("**** Unsafe Trust Manager. Insecure, not recommended for production use");
-            builder.withUnsafeTrustMaterial();
-            builder.withUnsafeHostnameVerifier();
-        }
-        if(this.trustStorePath != null) {
-            if(trustStorePassword == null)
-                throw new IllegalArgumentException("Trust Store location and its password must be provided");
-
-            if (_logger.isDebugEnabled()) _logger.debug("**** Reading TrustStore. {}", trustStorePath);
-            builder.withTrustMaterial(FTPSUtil.getStream(this.trustStorePath), this.trustStorePassword.toCharArray());
-        }
-
-        return builder.build().getSslContext();
     }
 
 }

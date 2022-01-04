@@ -59,6 +59,10 @@ public class FTPSClientProxy implements AutoCloseable {
        this._connect_();
     }
 
+    public SSLContext getSSLContext() {
+        return this._sslContext;
+    }
+
     public boolean isAvailable() {
         return _client.isAvailable();
     }
