@@ -32,7 +32,6 @@ public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
             super._prepareDataSocket_(socket);
             return;
         }
-
         if (socket instanceof SSLSocket) {
             // Control socket is SSL
             final SSLSession session = ((SSLSocket) _socket_).getSession();
@@ -57,12 +56,6 @@ public class FTPSClient extends org.apache.commons.net.ftp.FTPSClient {
                     throw new IOException(e);
                 }
             } else {
-                try {
-                    final Field invalidated = session.getClass().getDeclaredField("invalidated");
-                    invalidated.setAccessible(true);
-                    final boolean invalidatedValue = (boolean) invalidated.get(session);
-                    _logger.error("Invalid SSL Session: sessionId={}, invalidated={}", FTPSUtil.toHexString(session.getId()), invalidatedValue);
-                }catch(Exception exp) {}
                 throw new InvalidSSLSessionException("Invalid SSL Session");
             }
         }
