@@ -123,11 +123,7 @@ public class FTPSClientProxy implements AutoCloseable {
                 _logger.error("FTP server refused connection with reply {}", reply);
                 throw new ConnectionException("FTP server refused connection");
             }
-            _client.execPBSZ(0);
-            _client.execPROT("P");
-            _client.setFileType(FTP.BINARY_FILE_TYPE);
-            _client.setBufferSize(_bufferSizeInBytes);
-            _client.enterLocalPassiveMode();
+            this.requiredCommand();
             if (_logger.isDebugEnabled()) _logger.debug("Connection started");
         } catch (IOException e) {
             _logger.error("FTPS server refused connection", e);
