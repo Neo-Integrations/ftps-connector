@@ -56,7 +56,6 @@ public class FTPSClientProxy implements AutoCloseable {
        this._timeout = timeout;
        this._socketTimeout = socketTimeout;
        this._bufferSizeInBytes = bufferSizeInBytes;
-       this._connect_();
     }
 
     public boolean isAvailable() {
@@ -89,10 +88,9 @@ public class FTPSClientProxy implements AutoCloseable {
     }
     public void reconnect() throws ConnectionException {
         this.close();
-        this._connect_();
+        this.connect();
     }
-    private void _connect_() throws ConnectionException {
-
+    void connect() throws ConnectionException {
         _client = new FTPSClient(_isImplicit, _sslContext, _sessionReuse);
         try {
             if (_debugFtpCommand) {
@@ -100,7 +98,6 @@ public class FTPSClientProxy implements AutoCloseable {
                         true));
             }
             _client.setRemoteVerificationEnabled(_remoteVerificationEnable);
-
             final FTPClientConfig config = new FTPClientConfig();
             config.setServerTimeZoneId(_serverTimeZone);
             _client.configure(config);
@@ -149,9 +146,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.getModificationTime(path);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling getModificationTime {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.getModificationTime(path);
         }
     }
@@ -160,9 +157,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.changeWorkingDirectory(path);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling changeWorkingDirectory {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.changeWorkingDirectory(path);
         }
     }
@@ -170,9 +167,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.makeDirectory(dir);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling makeDirectory {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.makeDirectory(dir);
         }
     }
@@ -180,9 +177,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.rename(sourcePath, targetPath);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling rename {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.rename(sourcePath, targetPath);
         }
     }
@@ -192,9 +189,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             list =  _client.listDirectories(folder);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling listDirectories {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             list = _client.listDirectories(folder);
         }
         int reply = _client.getReplyCode();
@@ -210,9 +207,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.deleteFile(path);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling deleteFile {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.deleteFile(path);
         }
     }
@@ -220,9 +217,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.removeDirectory(folder);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling removeDirectory {}", exp.getMessage(),  exp);
-            this._connect_();
+            this.connect();
             return _client.removeDirectory(folder);
         }
     }
@@ -232,9 +229,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             return _client.storeFile(path, stream);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling storeFile {}", exp.getMessage(), exp);
-            _connect_();
+            connect();
             _client.deleteFile(path);
             requiredCommand();
             return _client.storeFile(path, stream);
@@ -246,9 +243,9 @@ public class FTPSClientProxy implements AutoCloseable {
         try {
             this.requiredCommand();
             is = _client.retrieveFileStream(path);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling retrieveFileStream {}", exp.getMessage());
-            this._connect_();
+            this.connect();
             is = _client.retrieveFileStream(path);
         }
 
@@ -268,9 +265,9 @@ public class FTPSClientProxy implements AutoCloseable {
             this.requiredCommand();
             if (_logger.isDebugEnabled()) _logger.debug("Listing: {}", sourceFolder);
             list = _client.listFiles(sourceFolder);
-        } catch(InvalidSSLSessionException exp) {
+        } catch(InvalidSSLSessionException  exp) {
             _logger.warn("Exception while listening folder. {}", exp.getMessage());
-            this._connect_();
+            this.connect();
             list = _client.listFiles(sourceFolder);
         }
 
@@ -363,13 +360,14 @@ public class FTPSClientProxy implements AutoCloseable {
 
     @Override
     public void close() {
+        if(_client == null) return;
         logoutQuietly();
         disconnectQuietly();
     }
 
     private void logoutQuietly() {
         try {
-            if (_client != null && _client.isAvailable()) {
+            if (_client != null) {
                 _client.logout();
             }
         } catch (Exception e) {
@@ -379,7 +377,7 @@ public class FTPSClientProxy implements AutoCloseable {
 
     private void disconnectQuietly() {
         try {
-            if (_client != null && _client.isConnected()) {
+            if (_client != null) {
                 _client.disconnect();
             }
         } catch (Exception e) {

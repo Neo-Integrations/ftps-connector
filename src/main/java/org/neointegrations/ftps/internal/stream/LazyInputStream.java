@@ -3,6 +3,7 @@ package org.neointegrations.ftps.internal.stream;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.internal.FTPSConnection;
 import org.neointegrations.ftps.internal.FTPSConnectionProvider;
+import org.neointegrations.ftps.internal.client.FTPClientProxyFactory;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -184,7 +185,7 @@ public class LazyInputStream extends InputStream {
     private InputStream inputStream() {
         _logger.info("Opening inputStream");
         try {
-            _connection = _provider.connect();
+            _connection = FTPClientProxyFactory.builder().connect(_provider);
             if (_createIntermediateFile) {
                 renameToIntermediateOrOriginal(true);
             }

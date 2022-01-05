@@ -17,6 +17,7 @@ import org.mule.runtime.extension.api.annotation.param.display.Summary;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.neointegrations.ftps.api.FTPSFileAttributes;
 import org.neointegrations.ftps.api.FTPSFileMatcher;
+import org.neointegrations.ftps.internal.client.FTPClientProxyFactory;
 import org.neointegrations.ftps.internal.stream.LazyInputStream;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
@@ -56,10 +57,11 @@ public class FTPSOperations {
         if (_logger.isDebugEnabled()) _logger.debug("Listing a folder...");
         final List<Result<LazyInputStream, FTPSFileAttributes>> files = new ArrayList<Result<LazyInputStream, FTPSFileAttributes>>();
 
-        if (!connection.isConnected()) {
+       if (!connection.isConnected()) {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
 
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             final Map<String, Long> nameSizeMap = new HashMap<>();
             if (sizeCheckEnabled) {
@@ -154,6 +156,7 @@ public class FTPSOperations {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
 
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             String path = FTPSUtil.trimPath(sourceFolder, fileName);
             String timestamp = connection.ftpsClient().getModificationTime(path);
@@ -211,6 +214,9 @@ public class FTPSOperations {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
 
+
+
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
             String timestamp = connection.ftpsClient().getModificationTime(path);
@@ -230,14 +236,14 @@ public class FTPSOperations {
                 String intermediatePath = FTPSUtil.trimPath(targetFolder, intermediateFileName);
                 status = connection.ftpsClient().storeFile(intermediatePath, sourceStream);
                 if (status) {
-                    if(timestamp != null) {
+                    if (timestamp != null) {
                         if (_logger.isDebugEnabled()) _logger.debug("{} file deleted", path);
                         connection.ftpsClient().deleteFile(path);
                     }
                     status = connection.ftpsClient().rename(intermediatePath, path);
                 }
             } else {
-                if(timestamp != null) {
+                if (timestamp != null) {
                     if (_logger.isDebugEnabled()) _logger.debug("{} file deleted", path);
                     connection.ftpsClient().deleteFile(path);
                 }
@@ -277,6 +283,7 @@ public class FTPSOperations {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
         boolean status = false;
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             String path = FTPSUtil.trimPath(targetFolder, targetFileName);
             String intermediatePath = FTPSUtil.trimPath(targetFolder,
@@ -329,11 +336,12 @@ public class FTPSOperations {
 
         if (_logger.isDebugEnabled()) _logger.debug("Removing the directory {}", targetFolder);
 
-        if (!connection.isConnected()) {
+       if (!connection.isConnected()) {
             throw new ConnectionException("Connection is not healthy. It will be retried");
         }
 
         boolean status = false;
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             if (!connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                 if (ignoreErrorWhenFolderDoesNotExists) return false;
@@ -377,6 +385,7 @@ public class FTPSOperations {
         }
 
         boolean status = true;
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
             if (connection.ftpsClient().changeWorkingDirectory(targetFolder)) {
                 if (ignoreErrorWhenFolderExists == false) {
@@ -443,6 +452,8 @@ public class FTPSOperations {
         String targetPath = (targetFileName != null) ? FTPSUtil.trimPath(targetFolder, targetFileName) : targetFolder;
         if (_logger.isDebugEnabled()) _logger.debug("Renaming the source path {} to {}", sourcePath, targetPath);
         boolean status = false;
+
+        //try(FTPSConnection connection = FTPClientProxyFactory.builder().connect(conn.getProvider())) {
         try {
 
             if (isFileRename) {

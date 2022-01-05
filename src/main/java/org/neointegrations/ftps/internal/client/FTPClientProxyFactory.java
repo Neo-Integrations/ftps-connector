@@ -4,6 +4,8 @@ import com.google.common.base.Strings;
 import nl.altindag.ssl.SSLFactory;
 import nl.altindag.ssl.util.KeyManagerUtils;
 import org.mule.runtime.api.connection.ConnectionException;
+import org.neointegrations.ftps.internal.FTPSConnection;
+import org.neointegrations.ftps.internal.FTPSConnectionProvider;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +29,23 @@ public class FTPClientProxyFactory {
     private static SSLContext _sslContext_ = null;
     private static final ReentrantLock _lock_ = new ReentrantLock();
 
+    private static FTPClientProxyFactory.Builder _builder_;
+    private static void cacheBuilder(FTPClientProxyFactory.Builder builder) {
+        if(Objects.isNull(_builder_) && Objects.nonNull(builder)) {
+            _lock_.lock();
+            try {
+                if(Objects.isNull(_builder_)) {
+                    _builder_ = builder;
+                }
+            } finally {
+                _lock_.unlock();
+            }
+        }
+    }
+
     public static FTPClientProxyFactory.Builder builder() {
-        return new FTPClientProxyFactory.Builder();
+        if(Objects.nonNull(_builder_)) return _builder_;
+        else  return new FTPClientProxyFactory.Builder();
     }
 
     public static class Builder {
@@ -83,24 +100,31 @@ public class FTPClientProxyFactory {
             INSTANCE = this;
         }
 
+        public FTPSConnection connect(FTPSConnectionProvider provider) throws ConnectionException {
+            FTPSConnection connect = provider.connect();
+            return connect;
+        }
+
         public Builder withTLSV12(boolean tls12) {
             this._tlsV12Only = tls12;
             return INSTANCE;
         }
+
         public Builder withImplicit(boolean isImplicit) {
             this._isImplicit = isImplicit;
             return INSTANCE;
         }
 
         public Builder withSSLContext(SSLContext sslContext) {
-            if(Objects.isNull(sslContext)) {
+            if (Objects.isNull(sslContext)) {
                 throw new NullPointerException("sslContext can not be null");
             }
             FTPClientProxyFactory._sslContext_ = sslContext;
             return INSTANCE;
         }
+
         public Builder withKeyStore(String keyStoreType) {
-            if(Strings.isNullOrEmpty(keyStoreType)) {
+            if (Strings.isNullOrEmpty(keyStoreType)) {
                 throw new NullPointerException("keyStoreType is null");
             }
             this._keystoreType = keyStoreType;
@@ -120,11 +144,11 @@ public class FTPClientProxyFactory {
                                     String keyAlias,
                                     String keyStoreType) {
 
-            if(Strings.isNullOrEmpty(keystorePath) ||
-                Strings.isNullOrEmpty(keystorePassword) ||
+            if (Strings.isNullOrEmpty(keystorePath) ||
+                    Strings.isNullOrEmpty(keystorePassword) ||
                     Strings.isNullOrEmpty(keyAlias) ||
                     Strings.isNullOrEmpty(keyStoreType) ||
-                    Strings.isNullOrEmpty(keyPassword) ) {
+                    Strings.isNullOrEmpty(keyPassword)) {
                 throw new NullPointerException("keystorePath, keystorePassword keyAlias, keyStoreType are mandatory, none of them can be null");
             }
             this._keyStorePath = keystorePath;
@@ -137,13 +161,14 @@ public class FTPClientProxyFactory {
         }
 
         public Builder withTrustStore(String truststorePath,
-                                    String trustStorePassword) {
+                                      String trustStorePassword) {
             return this.withTrustStore(truststorePath, trustStorePassword, KeyStore.getDefaultType());
         }
+
         public Builder withTrustStore(String truststorePath,
                                       String trustStorePassword,
                                       String trustStoreType) {
-            if(Strings.isNullOrEmpty(truststorePath) ||
+            if (Strings.isNullOrEmpty(truststorePath) ||
                     Strings.isNullOrEmpty(trustStorePassword) ||
                     Strings.isNullOrEmpty(trustStoreType)) {
                 throw new NullPointerException("truststorePath, and trustStorePassword are mandatory, none of them can be null");
@@ -153,6 +178,7 @@ public class FTPClientProxyFactory {
             this._trustStoreType = trustStoreType;
             return INSTANCE;
         }
+
         public Builder withSessionReuse(boolean reuse) {
             this._sessionReuse = reuse;
             return INSTANCE;
@@ -162,62 +188,73 @@ public class FTPClientProxyFactory {
             this._debugFtpCommand = printFTPCommand;
             return INSTANCE;
         }
+
         public Builder withEnableCertificateValidation(boolean enableCertificateValidation) {
             this._enableCertificateValidation = enableCertificateValidation;
             return INSTANCE;
         }
+
         public Builder withServerTimeZone(String serverTimeZone) {
             this._serverTimeZone = serverTimeZone;
             return INSTANCE;
         }
+
         public Builder withUsername(String user) {
             this._user = user;
             return INSTANCE;
         }
+
         public Builder withPassword(String password) {
             this._password = password;
             return INSTANCE;
         }
+
         public Builder withHost(String host) {
             this._host = host;
             return INSTANCE;
         }
+
         public Builder withPort(int port) {
             this._port = port;
             return INSTANCE;
         }
+
         public Builder withTimeout(int timeout) {
             this._timeout = timeout;
             return INSTANCE;
         }
+
         public Builder withSocketTimeout(int socketTimeout) {
             this._socketTimeout = socketTimeout;
             return INSTANCE;
         }
+
         public Builder withBufferSizeInBytes(int bufferSizeInBytes) {
             this._bufferSizeInBytes = bufferSizeInBytes;
             return INSTANCE;
         }
+
         public Builder withSSLContextCache(boolean sslContextCache) {
             this._sslContextCache = sslContextCache;
             return INSTANCE;
         }
+
         public FTPSClientProxy build() throws ConnectionException {
 
-            if(this._sslContextCache == false) {
+            if (this._sslContextCache == false) {
                 _sslContext_ = this.sslContext();
-            } else if(_sslContext_ == null) {
+            } else if (_sslContext_ == null) {
                 _lock_.lock();
                 try {
-                    if(_sslContext_ == null) {
+                    if (_sslContext_ == null) {
                         _sslContext_ = this.sslContext();
                     }
                 } finally {
                     _lock_.unlock();
                 }
+                cacheBuilder(this);
             }
-
-            return new FTPSClientProxy(
+            FTPSClientProxy proxy =  new FTPSClientProxy(
                     _isImplicit,
                     _sslContext_,
                     _sessionReuse,
@@ -231,23 +268,29 @@ public class FTPClientProxyFactory {
                     _timeout,
                     _socketTimeout,
                     _bufferSizeInBytes);
+            proxy.connect();
+            return proxy;
 
         }
-        private SSLContext sslContext() throws ConnectionException{
+        public boolean canIReuse() {
+            return Objects.nonNull(_builder_);
+        }
+
+        private SSLContext sslContext() throws ConnectionException {
 
             SSLFactory.Builder builder = SSLFactory.builder();
             builder.withSecureRandom(new SecureRandom());
-            if(this._tlsV12Only) {
+            if (this._tlsV12Only) {
                 if (_logger.isDebugEnabled()) _logger.debug("**** TLS Protocols version: TLSv1.2");
                 builder.withProtocols("TLSv1.2");
             }
-            if(this._keyStorePath != null) {
-                if(this._keyPassword == null || this._keyStorePassword == null || this._keyAlias == null) {
+            if (this._keyStorePath != null) {
+                if (this._keyPassword == null || this._keyStorePassword == null || this._keyAlias == null) {
                     throw new IllegalArgumentException("Key Store location, its password, alias and key password must be provided");
                 }
                 if (_logger.isDebugEnabled()) _logger.debug("**** Reading keystore {}", this._keyStorePath);
-                try(InputStream stream = FTPSUtil.getStream(this._keyStorePath)) {
-                    if(Strings.isNullOrEmpty(this._keystoreType))
+                try (InputStream stream = FTPSUtil.getStream(this._keyStorePath)) {
+                    if (Strings.isNullOrEmpty(this._keystoreType))
                         this._keyStorePath = KeyStore.getDefaultType();
 
                     KeyStore keyStore = KeyStore.getInstance(this._keystoreType);
@@ -256,34 +299,27 @@ public class FTPClientProxyFactory {
                     map.put(this._keyAlias, this._keyPassword.toCharArray());
                     X509ExtendedKeyManager keyManager = KeyManagerUtils.createKeyManager(keyStore, map);
                     builder.withIdentityMaterial(keyManager);
-                } catch (KeyStoreException e) {
-                    if (_logger.isDebugEnabled()) _logger.debug("**** Invalid key store: {}", e.getMessage(), e);
-                    throw new ConnectionException(e);
-                } catch (IOException e) {
-                    if (_logger.isDebugEnabled()) _logger.debug("**** Unable to read keystore: {}", e.getMessage(), e);
-                    throw new ConnectionException(e);
-                } catch (CertificateException e) {
-                    if (_logger.isDebugEnabled()) _logger.debug("**** Certificate issue: {}", e.getMessage(), e);
-                    throw new ConnectionException(e);
-                } catch (NoSuchAlgorithmException e) {
-                    if (_logger.isDebugEnabled()) _logger.debug("**** Invalid Algorithm: {}", e.getMessage(), e);
+                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
+                    if (_logger.isDebugEnabled()) _logger.debug("**** Unable to load keystore: {}", e.getMessage(), e);
                     throw new ConnectionException(e);
                 }
             }
-            if(this._enableCertificateValidation == true) {
+            if (this._enableCertificateValidation == true) {
                 if (_logger.isDebugEnabled()) _logger.debug("**** With JDK and OS default trust Manager");
                 builder.withDefaultTrustMaterial();
                 builder.withSystemTrustMaterial();
             } else {
-                if (_logger.isDebugEnabled()) _logger.debug("**** Unsafe Trust Manager. Insecure, not recommended for production use");
+                if (_logger.isDebugEnabled())
+                    _logger.debug("**** Unsafe Trust Manager. Insecure, not recommended for production use");
                 builder.withUnsafeTrustMaterial();
                 builder.withUnsafeHostnameVerifier();
             }
-            if(this._trustStorePath != null) {
-                if(this._trustStorePassword == null)
+
+            if (this._trustStorePath != null) {
+                if (this._trustStorePassword == null)
                     throw new IllegalArgumentException("Trust Store location and its password must be provided");
 
-                if(Strings.isNullOrEmpty(this._trustStoreType))
+                if (Strings.isNullOrEmpty(this._trustStoreType))
                     this._trustStoreType = KeyStore.getDefaultType();
 
                 if (_logger.isDebugEnabled()) _logger.debug("**** Reading TrustStore. {}", this._trustStorePath);

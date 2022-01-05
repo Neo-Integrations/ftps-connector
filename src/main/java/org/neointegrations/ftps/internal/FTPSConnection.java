@@ -13,8 +13,8 @@ public final class FTPSConnection implements AutoCloseable {
 
     private static final Logger _logger = LoggerFactory.getLogger(FTPSConnection.class);
 
-    private FTPSClientProxy _client = null;
-    private FTPSConnectionProvider _provider = null;
+    private final FTPSClientProxy _client;
+    private final FTPSConnectionProvider _provider;
 
     public FTPSConnection(final FTPSConnectionProvider provider,
                           final FTPSClientProxy client) {
@@ -29,16 +29,10 @@ public final class FTPSConnection implements AutoCloseable {
     @Override
     public void close() {
         _provider.disconnect(this);
-        if(_client != null) _client = null;
-        if(_provider != null) _provider = null;
     }
 
     public FTPSClientProxy ftpsClient() {
         return this._client;
-    }
-
-    public void setClient(FTPSClientProxy client) {
-        this._client = client;
     }
 
     public boolean isConnected() {

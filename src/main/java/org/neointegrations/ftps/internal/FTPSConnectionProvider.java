@@ -2,23 +2,25 @@ package org.neointegrations.ftps.internal;
 
 import com.google.common.base.Strings;
 import org.mule.runtime.api.connection.ConnectionException;
+import org.mule.runtime.api.connection.ConnectionProvider;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
-import org.mule.runtime.api.connection.PoolingConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.display.*;
+import org.neointegrations.ftps.api.TrustStoreType;
 import org.neointegrations.ftps.internal.client.FTPClientProxyFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.security.KeyStore;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.mule.runtime.api.meta.model.display.PathModel.Location.EXTERNAL;
 import static org.mule.runtime.api.meta.model.display.PathModel.Type.DIRECTORY;
 
 
-public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSConnection> {
+public class FTPSConnectionProvider implements ConnectionProvider<FTPSConnection> {
 
     private static final Logger _logger = LoggerFactory.getLogger(FTPSConnectionProvider.class);
     private final ReentrantLock _lock = new ReentrantLock();
@@ -105,42 +107,55 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
     @Optional()
     @Placement(tab = "SSL Context", order = 5)
     @Path(type = DIRECTORY, location = EXTERNAL)
+    @DisplayName("Trust Store Type")
+    @Parameter
+    private TrustStoreType trustStoreType;
+
+    @Optional()
+    @Placement(tab = "SSL Context", order = 6)
+    @Path(type = DIRECTORY, location = EXTERNAL)
     @DisplayName("Key Store Path")
     @Parameter
     private String keyStorePath;
 
     @Optional()
-    @Placement(tab = "SSL Context", order = 6)
+    @Placement(tab = "SSL Context", order = 7)
     @DisplayName("Key Store Password")
     @Password
     @Parameter
     private String keyStorePassword;
 
     @Optional()
-    @Placement(tab = "SSL Context", order = 7)
+    @Placement(tab = "SSL Context", order = 8)
     @DisplayName("Private Key Password")
     @Password
     @Parameter
     private String keyPassword;
 
     @Optional()
-    @Placement(tab = "SSL Context", order = 8)
+    @Placement(tab = "SSL Context", order = 9)
     @DisplayName("Key Alias")
     @Parameter
     private String keyAlias;
+
+    @Optional()
+    @Placement(tab = "SSL Context", order = 10)
+    @Path(type = DIRECTORY, location = EXTERNAL)
+    @DisplayName("Key Store Type")
+    @Parameter
+    private TrustStoreType keyStoreType;
 
     public FTPSConnectionProvider() throws ConnectionException {
         super();
         // To resolve [NET-408 Issue](https://issues.apache.org/jira/browse/NET-408), below property is needed
         // to share SSL session with the data connection
         System.setProperty("jdk.tls.useExtendedMasterSecret", "false");
-
-
     }
 
     @Override
     public FTPSConnection connect() throws ConnectionException {
         FTPClientProxyFactory.Builder builder = FTPClientProxyFactory.builder();
+        if(builder.canIReuse()) return new FTPSConnection(this, builder.build());
 
         builder.withImplicit(false)
                 .withSessionReuse(sslSessionReuse)
@@ -156,12 +171,14 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
                 .withBufferSizeInBytes(bufferSizeInBytes)
                 .withTLSV12(tlsV12Only);
 
-        if(!Strings.isNullOrEmpty(keyStorePath)) {
-            builder.withKeyStore(keyStorePath, keyStorePassword, keyPassword, keyAlias);
+        if (!Strings.isNullOrEmpty(keyStorePath)) {
+            if(keyStoreType == null) keyStoreType = TrustStoreType.valueOf(KeyStore.getDefaultType().toUpperCase());
+            builder.withKeyStore(keyStorePath, keyStorePassword, keyPassword, keyAlias, keyStoreType.get());
         }
 
-        if(!Strings.isNullOrEmpty(trustStorePath)) {
-            builder.withTrustStore(trustStorePath, trustStorePassword);
+        if (!Strings.isNullOrEmpty(trustStorePath)) {
+            if(trustStoreType == null) trustStoreType = TrustStoreType.valueOf(KeyStore.getDefaultType().toUpperCase());
+            builder.withTrustStore(trustStorePath, trustStorePassword, trustStoreType.get());
         }
 
         return new FTPSConnection(this, builder.build());
@@ -191,5 +208,4 @@ public class FTPSConnectionProvider implements PoolingConnectionProvider<FTPSCon
         connection.ftpsClient().reconnect();
         if (_logger.isDebugEnabled()) _logger.debug("Connection restarted");
     }
-
 }

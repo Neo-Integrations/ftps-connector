@@ -71,6 +71,7 @@
     </build>
     <dependencies>
 
+        <!-- Main Apache common net library which provides FTPSClient-->
         <dependency>
             <groupId>commons-net</groupId>
             <artifactId>commons-net</artifactId>
@@ -90,12 +91,14 @@
             <classifier>mule-plugin</classifier>
         </dependency>
 
+        <!-- For SSLContext creation-->
         <dependency>
             <groupId>io.github.hakky54</groupId>
             <artifactId>sslcontext-kickstart</artifactId>
             <version>7.2.0</version>
         </dependency>
 
+        <!-- Java Utility-->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
