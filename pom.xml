@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neointegrations</groupId>
     <artifactId>ftps-connector</artifactId>
-    <version>1.0.9</version>
+    <version>1.0.9-SNAPSHOT</version>
     <packaging>mule-extension</packaging>
     <name>FTPS Extension</name>
 
@@ -103,6 +103,12 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>31.0-jre</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-ftp</artifactId>
+            <version>5.5.7</version>
         </dependency>
 
         <!-- Only for Test -->

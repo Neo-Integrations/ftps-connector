@@ -1,8 +1,9 @@
 package org.neointegrations.ftps.internal;
 
 import com.google.common.base.Strings;
-import org.mule.runtime.api.connection.ConnectionException;
+import org.mule.runtime.api.connection.CachedConnectionProvider;
 import org.mule.runtime.api.connection.ConnectionProvider;
+import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
@@ -14,16 +15,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.KeyStore;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.mule.runtime.api.meta.model.display.PathModel.Location.EXTERNAL;
 import static org.mule.runtime.api.meta.model.display.PathModel.Type.DIRECTORY;
 
 
 public class FTPSConnectionProvider implements ConnectionProvider<FTPSConnection> {
-
     private static final Logger _logger = LoggerFactory.getLogger(FTPSConnectionProvider.class);
-    private final ReentrantLock _lock = new ReentrantLock();
 
     @Parameter
     @Placement(tab = "General", order = 3)
@@ -43,12 +41,12 @@ public class FTPSConnectionProvider implements ConnectionProvider<FTPSConnection
     @Parameter
     private int port;
 
-    @Optional(defaultValue = "60")
+    @Optional(defaultValue = "#[60 * 1000]")
     @Placement(tab = "Advanced", order = 1)
     @Parameter
     private int timeout;
 
-    @Optional(defaultValue = "3600")
+    @Optional(defaultValue = "#[3600 * 1000]")
     @Placement(tab = "Advanced", order = 2)
     @Parameter
     private int socketTimeout;
@@ -195,7 +193,7 @@ public class FTPSConnectionProvider implements ConnectionProvider<FTPSConnection
     @Override
     public ConnectionValidationResult validate(final FTPSConnection connection) {
         if (_logger.isDebugEnabled()) _logger.debug("Validating connection...");
-        if (connection.ftpsClient().isConnected()) {
+        if (connection.ftpsClient().test()) {
             return ConnectionValidationResult.success();
         } else {
             return ConnectionValidationResult.failure("Connection is closed",

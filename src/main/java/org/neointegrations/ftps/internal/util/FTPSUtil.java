@@ -1,15 +1,24 @@
 package org.neointegrations.ftps.internal.util;
 
 import nl.altindag.ssl.exception.GenericKeyStoreException;
+import nl.altindag.ssl.exception.GenericTrustManagerException;
+import nl.altindag.ssl.util.TrustManagerUtils;
 import org.mule.extension.file.common.api.matcher.FileMatcher;
 import org.mule.extension.file.common.api.matcher.NullFilePayloadPredicate;
+import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.api.FTPSFileAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509ExtendedTrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -19,8 +28,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class FTPSUtil {
 
@@ -98,23 +109,24 @@ public class FTPSUtil {
         }
     }
 
-    public static KeyStore loadKeyStore(String keystorePath,
-                                        String keystorePassword,
-                                        String keystoreType) {
-        if(Objects.isNull(keystorePassword))
-            throw new IllegalArgumentException("keystorePassword must be provided");
-
-        if(Objects.isNull(keystorePath))
-            throw new IllegalArgumentException("keystorePath must be provided");
-
-        if(Objects.isNull(keystoreType)) keystoreType = KeyStore.getDefaultType();
-
-        try(InputStream keystoreInputStream = getStream(keystorePath)) {
-            return loadKeyStore(keystoreInputStream, keystorePassword, keystoreType);
-        } catch(Exception exp) {
-            _logger.error("Unable to load the keystore. Path={}, type={}", keystorePath, keystoreType);
-            _logger.error("Exception Message: {}", exp.getMessage());
-            throw new RuntimeException(exp);
+    public static File getFile(String fileName) throws ConnectionException {
+        if (fileName == null) throw new NullPointerException("fileName can not be null");
+        URL url = FTPSUtil.class.getClassLoader().getResource(fileName);
+        if (url == null) {
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("File does not exists in the classpath, so checking for absolute path");
+            }
+            try {
+                return Paths.get(fileName).toFile();
+            } catch (Exception exp) {
+                _logger.error("Could not load the file: {}", exp.getMessage(), exp);
+                throw new RuntimeException(exp);
+            }
+        }
+        try {
+            return new File(url.toURI());
+        } catch(URISyntaxException exp) {
+            throw new ConnectionException(exp);
         }
     }
 
@@ -150,7 +162,26 @@ public class FTPSUtil {
         KeyStore keystore = KeyStore.getInstance(keystoreType);
         keystore.load(keystoreInputStream, keystorePassword.toCharArray());
         return keystore;
+    }
 
+    public static KeyStore loadKeyStore(String keystorePath,
+                                        String keystorePassword,
+                                        String keystoreType) {
+        if(Objects.isNull(keystorePassword))
+            throw new IllegalArgumentException("keystorePassword must be provided");
+
+        if(Objects.isNull(keystorePath))
+            throw new IllegalArgumentException("keystorePath must be provided");
+
+        if(Objects.isNull(keystoreType)) keystoreType = KeyStore.getDefaultType();
+
+        try(InputStream keystoreInputStream = getStream(keystorePath)) {
+            return loadKeyStore(keystoreInputStream, keystorePassword, keystoreType);
+        } catch(Exception exp) {
+            _logger.error("Unable to load the keystore. Path={}, type={}", keystorePath, keystoreType);
+            _logger.error("Exception Message: {}", exp.getMessage());
+            throw new RuntimeException(exp);
+        }
     }
 
 }

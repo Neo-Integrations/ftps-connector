@@ -10,14 +10,13 @@ import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509ExtendedKeyManager;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
@@ -277,7 +276,8 @@ public class FTPClientProxyFactory {
         }
 
         private SSLContext sslContext() throws ConnectionException {
-
+            TrustManager tm = null;
+            KeyManager km = null;
             SSLFactory.Builder builder = SSLFactory.builder();
             builder.withSecureRandom(new SecureRandom());
             if (this._tlsV12Only) {
@@ -299,7 +299,7 @@ public class FTPClientProxyFactory {
                     map.put(this._keyAlias, this._keyPassword.toCharArray());
                     X509ExtendedKeyManager keyManager = KeyManagerUtils.createKeyManager(keyStore, map);
                     builder.withIdentityMaterial(keyManager);
-                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
+                } catch (IOException | KeyStoreException | NoSuchAlgorithmException | CertificateException e) {
                     if (_logger.isDebugEnabled()) _logger.debug("**** Unable to load keystore: {}", e.getMessage(), e);
                     throw new ConnectionException(e);
                 }
@@ -324,6 +324,7 @@ public class FTPClientProxyFactory {
 
                 if (_logger.isDebugEnabled()) _logger.debug("**** Reading TrustStore. {}", this._trustStorePath);
                 builder.withTrustMaterial(FTPSUtil.getStream(this._trustStorePath), this._trustStorePassword.toCharArray(), this._trustStoreType);
+
             }
 
             return builder.build().getSslContext();

@@ -1,17 +1,26 @@
 package org.neointegrations.ftps.internal.client;
 
+import com.google.common.base.Strings;
+import com.google.common.primitives.Booleans;
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.*;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.neointegrations.ftps.internal.util.FTPSUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.net.Socket;
+import java.util.Objects;
 
 public class FTPSClientProxy implements AutoCloseable {
     private static final Logger _logger = LoggerFactory.getLogger(FTPSClientProxy.class);
@@ -73,19 +82,6 @@ public class FTPSClientProxy implements AutoCloseable {
         return _client.getReplyString();
     }
 
-    public void requiredCommand() throws ConnectionException {
-        try {
-            _client.execPBSZ(0);
-            _client.execPROT("P");
-            _client.setFileType(FTP.BINARY_FILE_TYPE);
-            _client.setBufferSize(_bufferSizeInBytes);
-            _client.enterLocalPassiveMode();
-        } catch (FTPConnectionClosedException exp) {
-            this.reconnect();
-        } catch (IOException exp) {
-            throw new ConnectionException(exp);
-        }
-    }
     public void reconnect() throws ConnectionException {
         this.close();
         this.connect();
@@ -120,7 +116,13 @@ public class FTPSClientProxy implements AutoCloseable {
                 _logger.error("FTP server refused connection with reply {}", reply);
                 throw new ConnectionException("FTP server refused connection");
             }
-            this.requiredCommand();
+
+            _client.execPBSZ(0);
+            _client.execPROT("P");
+            _client.setFileType(FTP.BINARY_FILE_TYPE);
+            _client.setBufferSize(_bufferSizeInBytes);
+            _client.enterLocalPassiveMode();
+
             if (_logger.isDebugEnabled()) _logger.debug("Connection started");
         } catch (IOException e) {
             _logger.error("FTPS server refused connection", e);
@@ -144,7 +146,7 @@ public class FTPSClientProxy implements AutoCloseable {
 
     public String getModificationTime(String path) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.getModificationTime(path);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling getModificationTime {}", exp.getMessage(),  exp);
@@ -152,10 +154,9 @@ public class FTPSClientProxy implements AutoCloseable {
             return _client.getModificationTime(path);
         }
     }
-    public boolean changeWorkingDirectory(String path)
-            throws IOException, ConnectionException {
+    public boolean changeWorkingDirectory(String path) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.changeWorkingDirectory(path);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling changeWorkingDirectory {}", exp.getMessage(),  exp);
@@ -165,7 +166,7 @@ public class FTPSClientProxy implements AutoCloseable {
     }
     public boolean makeDirectory(String dir) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.makeDirectory(dir);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling makeDirectory {}", exp.getMessage(),  exp);
@@ -173,10 +174,12 @@ public class FTPSClientProxy implements AutoCloseable {
             return _client.makeDirectory(dir);
         }
     }
+
     public boolean rename(String sourcePath, String targetPath) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
-            return _client.rename(sourcePath, targetPath);
+            //this.requiredCommand();
+            this._client.deleteFile(targetPath);
+            return this._client.rename(sourcePath, targetPath);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling rename {}", exp.getMessage(),  exp);
             this.connect();
@@ -184,10 +187,9 @@ public class FTPSClientProxy implements AutoCloseable {
         }
     }
     public FTPFile[] listDirectories(String folder) throws IOException, ConnectionException {
-
         FTPFile[] list = null;
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             list =  _client.listDirectories(folder);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling listDirectories {}", exp.getMessage(),  exp);
@@ -205,7 +207,7 @@ public class FTPSClientProxy implements AutoCloseable {
 
     public boolean deleteFile(String path) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.deleteFile(path);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling deleteFile {}", exp.getMessage(),  exp);
@@ -215,7 +217,7 @@ public class FTPSClientProxy implements AutoCloseable {
     }
     public boolean removeDirectory(String folder) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.removeDirectory(folder);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling removeDirectory {}", exp.getMessage(),  exp);
@@ -224,16 +226,15 @@ public class FTPSClientProxy implements AutoCloseable {
         }
     }
 
-    public boolean storeFile(String path, InputStream stream)
-            throws IOException, ConnectionException {
+    public boolean storeFile(String path, InputStream stream) throws IOException, ConnectionException {
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             return _client.storeFile(path, stream);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling storeFile {}", exp.getMessage(), exp);
             connect();
             _client.deleteFile(path);
-            requiredCommand();
+            //requiredCommand();
             return _client.storeFile(path, stream);
         }
     }
@@ -241,7 +242,7 @@ public class FTPSClientProxy implements AutoCloseable {
     public InputStream retrieveFileStream(String path) throws IOException, ConnectionException {
         InputStream is = null;
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             is = _client.retrieveFileStream(path);
         } catch(InvalidSSLSessionException  exp) {
             _logger.error("An exception occurred while calling retrieveFileStream {}", exp.getMessage());
@@ -258,11 +259,10 @@ public class FTPSClientProxy implements AutoCloseable {
         return is;
     }
 
-    public FTPFile[] listFiles(String sourceFolder)
-            throws IOException, ConnectionException {
+    public FTPFile[] listFiles(String sourceFolder) throws IOException, ConnectionException {
         FTPFile[] list = null;
         try {
-            this.requiredCommand();
+            //this.requiredCommand();
             if (_logger.isDebugEnabled()) _logger.debug("Listing: {}", sourceFolder);
             list = _client.listFiles(sourceFolder);
         } catch(InvalidSSLSessionException  exp) {
@@ -280,9 +280,7 @@ public class FTPSClientProxy implements AutoCloseable {
         return list;
     }
 
-    public void deleteRecursive(String targetFolder)
-            throws IOException, ConnectionException {
-
+    public void deleteRecursive(String targetFolder) throws IOException, ConnectionException {
         FTPFile[] folders = this.listDirectories(targetFolder);
         FTPFile[] files = this.listFiles(targetFolder);
 
@@ -305,10 +303,8 @@ public class FTPSClientProxy implements AutoCloseable {
         }
     }
 
-    public boolean sizeCheck(String path, long timeBetweenSizeCheckInSeconds)
-            throws IOException, InterruptedException, ConnectionException {
-
-        this.requiredCommand();
+    public boolean sizeCheck(String path, long timeBetweenSizeCheckInSeconds) throws IOException, InterruptedException, ConnectionException {
+        //this.requiredCommand();
         this.sendCommand("SIZE", path);
 
         String reply = this.getReplyString();
@@ -317,7 +313,7 @@ public class FTPSClientProxy implements AutoCloseable {
         if (s != null && s.length > 0) start = Long.valueOf(s[s.length - 1].trim());
         Thread.sleep(timeBetweenSizeCheckInSeconds * 1000);
 
-        this.requiredCommand();
+        //this.requiredCommand();
         this.sendCommand("SIZE", path);
 
         reply = this.getReplyString();
@@ -330,9 +326,7 @@ public class FTPSClientProxy implements AutoCloseable {
 
     }
 
-    public boolean createParentDirectory(String dir)
-            throws IOException, ConnectionException {
-
+    public boolean createParentDirectory(String dir) throws IOException, ConnectionException {
         if (dir.endsWith("/") || dir.endsWith("\\")) {
             dir = dir.substring(0, dir.length() - 1);
         }
@@ -340,7 +334,7 @@ public class FTPSClientProxy implements AutoCloseable {
         StringBuilder sb = new StringBuilder();
         for (int idx = 0; idx < dirs.length; idx++) {
             if (idx == 0) {
-                if (dirs[idx] == null || "".equals(dirs[idx].trim())) {
+                if (Strings.isNullOrEmpty(dirs[idx])) {
                     // Fow unix like file systems, this will start from the root. For example "/"
                     sb.append(File.separator);
                 } else {
@@ -351,11 +345,54 @@ public class FTPSClientProxy implements AutoCloseable {
             }
             sb.append(dirs[idx]).append(File.separator);
             String cd = sb.substring(0, sb.length() - 1);
-            if (!this.changeWorkingDirectory(cd)) {
-                if (this.makeDirectory(cd) == false) return false;
+            boolean DIR_NOT_EXISTS = false;
+            boolean DIR_CREATE_FAILURE = false;
+            if (this.changeWorkingDirectory(cd) == DIR_NOT_EXISTS) {
+                if (this.makeDirectory(cd) == DIR_CREATE_FAILURE) return DIR_CREATE_FAILURE;
             }
         }
         return true;
+    }
+
+    public boolean exists(String path) throws IOException {
+        Assert.hasText(path, "'path' must not be empty");
+        String[] names = this._client.listNames(path);
+        boolean exists = !ObjectUtils.isEmpty(names);
+        if (!exists) {
+            String currentWorkingPath = this._client.printWorkingDirectory();
+            Assert.state(currentWorkingPath != null, "working directory cannot be determined; exists check can not be completed");
+
+            try {
+                exists = this._client.changeWorkingDirectory(path);
+            } finally {
+                this._client.changeWorkingDirectory(currentWorkingPath);
+            }
+        }
+        return exists;
+    }
+
+    public boolean test() {
+        return this.isOpen() &&
+                this.doTest();
+    }
+
+    public boolean isOpen() {
+        try {
+            this._client.noop();
+            return true;
+        } catch (Exception exp) {
+            if(_logger.isDebugEnabled()) _logger.debug("isOpen: failed to noop FTPClient", exp);
+            return false;
+        }
+    }
+    private boolean doTest() {
+        try {
+            this._client.noop();
+            return true;
+        } catch (IOException exp) {
+            if(_logger.isDebugEnabled()) _logger.debug("doTest: failed to noop FTPClient", exp);
+            return false;
+        }
     }
 
     @Override

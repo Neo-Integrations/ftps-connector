@@ -303,10 +303,11 @@ public class FTPSOperations {
             if (status) {
                 _logger.info("Deleted the file successfully");
             } else {
-                throw new Exception("Unable to delete file");
+                throw new Exception("Unable to delete the file");
             }
 
         } catch (FileNotFoundException fnf) {
+            _logger.error("File not found: {}", targetFileName, fnf);
             throw fnf;
         } catch (Exception exp) {
             _logger.error("Something went wrong while deleting the file {}", targetFileName, exp);
@@ -468,7 +469,6 @@ public class FTPSOperations {
                     }
                 }
             } else {
-
                 if (!connection.ftpsClient().changeWorkingDirectory(sourcePath))
                     throw new IllegalStateException("Folder does not exists");
             }
